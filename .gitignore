@@ -1,0 +1,17 @@
+node_modules/
+.next/
+.next-clutch-test/
+.vercel/
+.venv/
+.env*
+!.env.example
+*.tsbuildinfo
+playwright-report/
+test-results/
+artifacts/
+test-artifacts/
+.genvm-cache/
+.impeccable/
+deployments/*.json
+__pycache__/
+.pytest_cache/

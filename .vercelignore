@@ -1,0 +1,14 @@
+node_modules
+.next
+.venv
+.genvm-cache
+.vercel
+.env*
+deployments
+artifacts
+test-artifacts
+playwright-report
+test-results
+.impeccable
+__pycache__
+.pytest_cache

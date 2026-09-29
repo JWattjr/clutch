@@ -1,0 +1,46 @@
+{
+  "name": "clutch-genlayer-chess-quests",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.13.0" },
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build",
+    "start": "next start --hostname 127.0.0.1",
+    "setup:python": "node scripts/setup-python.mjs",
+    "contract:lint": "node scripts/python.mjs -X utf8 -m genvm_linter.cli check contracts/clutch.py",
+    "contract:schema": "node scripts/contract-schema.mjs",
+    "test:rules": "node scripts/python.mjs -X utf8 -m pytest -p no:cacheprovider tests/direct/test_rules.py -q",
+    "test:direct": "node scripts/python.mjs -X utf8 -m pytest -p no:cacheprovider tests/direct -q",
+    "test:integration": "tsx scripts/integration-flow.ts",
+    "test:ui": "node scripts/test-browser.mjs ui",
+    "test:responsive": "node scripts/test-browser.mjs responsive",
+    "lint": "eslint app components lib scripts",
+    "typecheck": "tsc --noEmit",
+    "offline:check": "npm run contract:lint && npm run contract:schema && npm run test:rules && npm run lint && npm run typecheck && npm run build && npm run test:ui && npm run test:responsive",
+    "check": "npm run offline:check && npm run test:direct",
+    "deploy": "tsx scripts/deploy.ts",
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "verify:proof": "tsx scripts/verify-proof.ts",
+    "probe:live": "tsx scripts/live-probe.ts",
+    "probe:validators": "tsx scripts/validator-probe.ts"
+  },
+  "dependencies": {
+    "@fontsource-variable/ibm-plex-sans": "5.2.6",
+    "genlayer-js": "1.1.8",
+    "next": "16.3.5",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "eslint": "9.39.1",
+    "eslint-config-next": "16.3.5",
+    "playwright-core": "1.56.1",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3"
+  }
+}
