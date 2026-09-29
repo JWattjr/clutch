@@ -32,7 +32,7 @@ Clutch puts an explicit, hash-bound checklist between natural-language intent an
 - A live claim is one completed game played after both quest activation and player enrollment.
 - One successful claim can settle each quest. The first qualifying claim recorded on-chain wins; this does not promise the earliest game completed.
 - Historical replay is a separate, reward-free sandbox and cannot qualify for a live quest.
-- The supplied screenshot is the approved visual and interaction reference.
+- The supplied screenshot establishes the arcade mood, palette, and product controls. The quest map is an original visual interpretation, not a one-for-one copy of its island layout.
 - Core copy: “Agree on the rules before the game. Verify the result afterward.”
 
 ## Capabilities and Constraints
@@ -50,13 +50,13 @@ Clutch puts an explicit, hash-bound checklist between natural-language intent an
 - Product name: CLUTCH.
 - Tagline: “Turn a challenge into a quest.”
 - Companion voice: playful and game-like, chosen by the user.
-- Preserve the supplied screenshot's game-map visual direction and its focused mobile quest detail view.
+- Keep the playful game-map direction and focused mobile quest detail view. Let the quest map use original illustrated landmarks and terrain.
 
 ## Evidence on Hand
 
-- The attached screenshot is the approved UI reference.
-- The current Lichess API specification describes game export and public profile data. Runtime availability from GenLayer validators has not yet been verified.
-- No Clutch deployment, account-link verification, or fresh post-activation game claim has been verified yet.
+- The attached screenshot is a visual mood reference; the user explicitly asked for a more visual quest map instead of a literal copy.
+- The public Lichess game and profile paths passed a test-only live validator probe on Studionet.
+- Clutch 0.1.1 is deployed on Studionet, and supported/unsupported compiler paths and activation passed live consensus. A user-controlled account link and fresh post-activation game claim remain unverified.
 - Do not invent players, completed quests, achievements, proof receipts, or deployment claims.
 
 ## Product Principles

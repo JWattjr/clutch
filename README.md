@@ -2,7 +2,7 @@
 
 **Turn a challenge into a quest.** Clutch is a chess-quest board where sponsors describe a one-game Lichess challenge, inspect a canonical checklist, and reserve non-monetary DEMO units. After a player links one Lichess account to one wallet and enrolls, GenLayer validators independently retrieve the game record; deterministic contract code checks the frozen conditions and records the result.
 
-The supplied artboard is the approved visual reference. The browser experience includes the quest map and list, preview-only example quests, sponsor desk, wallet-backed account linking and enrollment, game submission, public receipts, and a separate historical replay sandbox. The sandbox never calls the contract or awards a reward.
+The supplied artboard established the arcade mood and palette. The quest map uses an original illustrated chess landscape with interactive destinations. The browser experience includes the map and list, preview-only example quests, sponsor desk, wallet-backed account linking and enrollment, game submission, public receipts, and a separate historical replay sandbox. The sandbox never calls the contract or awards a reward.
 
 ## Current status
 

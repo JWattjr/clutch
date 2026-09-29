@@ -18,6 +18,9 @@ colors:
   mint: "#75dfb6"
   quest-gold: "#ffd16a"
   coral: "#ff897f"
+  map-grove: "#9af0c9"
+  map-meadow: "#d4b9ff"
+  map-summit: "#ffb5a6"
 typography:
   display:
     fontFamily: '"Press Start 2P", "Lucida Console", Monaco, monospace'
@@ -79,9 +82,9 @@ components:
 
 ## Overview
 
-Clutch is an arcade chess archipelago: a connected map makes time-control quests feel explorable, while the surrounding interface keeps their rules and state legible. Its character is playful, compact, and game-like, with a lilac knight companion and small pixel-lettered cues.
+Clutch is an arcade chess world: an illustrated route makes time-control quests feel explorable, while the surrounding interface keeps their rules and state legible. Its character is playful, compact, and game-like, with a lilac knight companion and small pixel-lettered cues.
 
-The user-supplied quest-map artboard is the visual authority. Carry its indigo frame, organic islands, dotted gold trails, and lavender, mint, gold, and coral state colors through the map, sponsor, and proof surfaces. Use readable sans-serif copy for instructions and evidence. The map is a designed working surface, not decoration for a generic finance dashboard.
+The user-supplied artboard sets the arcade mood, indigo frame, and lavender, mint, gold, and coral cues. The user clarified that its map composition should not be copied. The map now depicts one continuous chess landscape: an emerald knight grove, a lavender clock observatory, and a coral rook citadel joined by a gold path. Use readable sans-serif copy for instructions and evidence. The illustrated world is an interactive working surface.
 
 ## Colors
 
@@ -93,20 +96,20 @@ IBM Plex Sans Variable is the reading face for instructions, controls, forms, an
 
 ## Layout
 
-The app frame is capped at 1500px. Wide screens place the map and quest list beside a narrower account and companion rail. At 1120px the header reflows; at 860px the rail stacks below the map and the three map/sponsor/proof tabs appear in normal document flow between the hero and page content. At 560px the frame becomes full width, the header stays at the top, and map controls and cards form a single column. A 370px breakpoint further tightens the map. Keep the three island destinations and their connecting trail visible together whenever the viewport permits; prevent sticky controls from covering map markers or quest rows.
+The app frame is capped at 1500px. Wide screens place the map and quest list beside a narrower account and companion rail. At 1120px the header reflows; at 860px the rail stacks below the map and the three map/sponsor/proof tabs appear in normal document flow between the hero and page content. At 560px the frame becomes full width, the header stays at the top, and map controls and cards form a single column. The full landscape and three destination plaques show together on wide screens. Narrow screens pan horizontally through the illustrated world, with the next destination peeking into view and a visible scroll cue. The list remains an accessible alternative.
 
 ## Elevation & Depth
 
-Use tonal panel layering, thin indigo borders, and restrained ambient shadow to separate surfaces. The islands carry the map's inset lower edge and soft ambient depth; quest emblems and primary actions use short shadows as tactile feedback. Generic panels stay flat. Avoid adding a repeated hard-offset shadow to every card.
+Use tonal panel layering, thin indigo borders, and restrained ambient shadow to separate surfaces. The map illustration supplies scenic depth; dark plaques keep its labels legible without obscuring the landmarks. Quest emblems and primary actions use short shadows as tactile feedback. Generic panels stay flat.
 
 ## Shapes
 
-Panels use compact rounded rectangles with small, consistent control corners. Tags and status chips are tighter. The islands are the deliberate organic shape: irregular oval silhouettes set apart from rectangular panels and controls. Focus remains visibly outlined in quest gold.
+Panels use compact rounded rectangles with small, consistent control corners. Tags and status chips are tighter. The map's continuous terrain and chess monuments provide the organic counterpoint to rectangular panels. Focus remains visibly outlined in quest gold.
 
 ## Components
 
 - **App frame and status bar:** The frame carries the brand, network/configuration state, DEMO balance, and wallet action. Keep the current connection state explicit.
-- **Quest map:** A framed star field holds three colored islands, chess-piece markers, and a dotted gold route. Map/list toggle and time-control chips remain separate from destination selection.
+- **Quest map:** A framed illustrated landscape holds three full-height interactive destination regions, colored map pins, and compact readable plaques. A gold road links knight grove, clock observatory, and rook citadel. Map/list toggle and time-control chips remain separate from destination selection; preview labels never suggest live rewards.
 - **Quest tiles and details:** Tiles show the quest name, time-control state, and preview/live status. The detail sheet explains challenge, timing, evidence, and next action without implying that preview quests can be joined.
 - **Mobile navigation:** Map, sponsor, and proof tabs sit below the hero in normal flow on narrow screens. They must not obscure map content.
 - **Sponsor desk and proof shelf:** Use the same panel and control language. The sponsor flow separates writing, compiling, and confirmation; the proof shelf makes public evidence inspectable.
@@ -115,7 +118,7 @@ Panels use compact rounded rectangles with small, consistent control corners. Ta
 
 ## Do's and Don'ts
 
-- **Do** keep the indigo arcade map, organic islands, dotted gold routes, and restrained pixel labels consistent across surfaces.
+- **Do** keep the indigo arcade frame, illustrated chess geography, gold route, and restrained pixel labels consistent across surfaces.
 - **Do** use sans-serif type for paragraphs, forms, and receipts, with clear status wording beside color cues.
 - **Do** preserve visible focus outlines, touch-sized controls, and the mobile tabs' non-overlapping placement.
 - **Do** keep preview, DEMO, and live-contract states visually distinct and factually explicit.

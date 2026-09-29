@@ -170,29 +170,37 @@ function QuestMap({
 
   return <section className="panel map-panel" aria-labelledby="map-title">
     <div className="panel-heading map-heading">
-      <div><h1 id="map-title">Quest map</h1><p className="heading-note">Pick a time-control trail. Every marker opens a quest list.</p></div>
+      <div><h1 id="map-title">Quest map</h1><p className="heading-note">Travel the chess world. Choose a destination to find its quests.</p></div>
       <div className="view-toggle" role="group" aria-label="Quest map layout">
         <button type="button" aria-pressed={layout === "map"} onClick={() => onLayout("map")}><Icon name="map" size={15} /> Map</button>
         <button type="button" aria-pressed={layout === "list"} onClick={() => onLayout("list")}><Icon name="list" size={15} /> List</button>
       </div>
     </div>
     <div className={`board-body ${layout === "list" ? "list-layout" : ""}`}>
-      {layout === "map" && <div className="map-stage" aria-label="Interactive quest map grouped by time control">
-        <div className="map-stars" aria-hidden="true" />
-        <span className="map-coordinate coord-one">A · 01</span><span className="map-coordinate coord-two">B · 02</span><span className="map-coordinate coord-three">C · 03</span>
-        <svg className="trail-lines" viewBox="0 0 800 420" preserveAspectRatio="none" aria-hidden="true"><path d="M130 300 C220 190 260 180 385 130 S575 190 660 295" /><path d="M130 300 C205 330 285 355 400 336" /></svg>
-        <div className="island island-woods" aria-hidden="true"><i /><i /><i /></div><div className="island island-meadow" aria-hidden="true"><i /><i /><i /></div><div className="island island-summit" aria-hidden="true"><i /><i /><i /></div>
-        <div className="map-center-label"><span className="center-star">✦</span><span>CHOOSE YOUR<br />NEXT MOVE</span></div>
-        {GROUPS.map((group) => {
-          const quest = liveReady ? mapQuests.find((item) => item.rules?.speed === group.speed) : sampleBySpeed.get(group.speed);
-          const active = selectedSpeed === group.speed;
-          return <button key={group.speed} className={`map-node node-${group.place} ${active ? "selected" : ""}`} type="button" aria-pressed={active} aria-label={`${group.name}: ${group.detail}${quest ? ", open quest" : ", browse quests"}`} onClick={() => { onChooseSpeed(group.speed); if (quest) onSelect(quest); }}>
-            <span className="node-emblem" aria-hidden="true">{group.speed === "BLITZ" ? "♞" : group.speed === "RAPID" ? "♟" : "♜"}</span>
-            <span className="node-name">{group.name}</span><span className="node-detail">{group.detail}</span>
-            {liveReady && <span className="node-count">{mapQuests.filter((item) => item.rules?.speed === group.speed).length} QUESTS</span>}
-          </button>;
-        })}
-        <span className="map-caption">{liveReady ? "ON-CHAIN QUESTS · GROUPED BY TIME CONTROL" : "SAMPLE MAP · EXAMPLES HAVE NO LIVE REWARD"}</span>
+      {layout === "map" && <div className="map-experience">
+        <div className="map-stage" role="group" aria-label="Illustrated quest map grouped by time control">
+          <div className="map-canvas">
+            <Image src="/images/quest-map-world.png" alt="" fill sizes="(max-width: 560px) 840px, (max-width: 860px) 720px, (max-width: 1200px) 900px, 1100px" quality={82} loading="eager" fetchPriority="high" className="map-world-image" />
+            <div className="map-destinations">
+              {GROUPS.map((group) => {
+                const trailQuests = liveReady ? mapQuests.filter((item) => item.rules?.speed === group.speed) : PREVIEW_QUESTS.filter((item) => item.rules?.speed === group.speed);
+                const quest = liveReady ? trailQuests[0] : sampleBySpeed.get(group.speed);
+                const count = trailQuests.length;
+                const active = selectedSpeed === group.speed;
+                const opensQuest = count === 1 && Boolean(quest);
+                return <button key={group.speed} className={`map-destination destination-${group.place} ${active ? "selected" : ""}`} type="button" aria-pressed={active} aria-label={`${group.name}: ${count} ${liveReady ? "live" : "sample"} ${count === 1 ? "quest" : "quests"}. ${opensQuest ? liveReady ? "Open quest details" : "View example details" : "Browse this trail"}`} onClick={() => { onChooseSpeed(group.speed); if (opensQuest && quest) onSelect(quest); }}>
+                  <span className="destination-pin" aria-hidden="true" />
+                  <span className="destination-plaque">
+                    <span className="destination-name">{group.name}</span>
+                    <span className="destination-detail">{group.detail}</span>
+                    <span className="destination-bottom"><span className="destination-count">{liveReady ? `${count} ${count === 1 ? "quest" : "quests"}` : `${count} ${count === 1 ? "sample" : "samples"}`}</span><span className="destination-action">{opensQuest ? liveReady ? "Open quest" : "View example" : "Browse trail"}</span></span>
+                  </span>
+                </button>;
+              })}
+            </div>
+          </div>
+        </div>
+        <p className="map-caption"><span>{liveReady ? "Live quests · grouped by time control" : "Sample world · examples have no live reward"}</span><span className="map-swipe-hint">Scroll sideways to explore the map</span></p>
       </div>}
       <div className="quest-list-area">
         <div className="filter-row"><span className="section-label"><Icon name="filter" size={15} /> BROWSE BY TIME</span><div className="filter-chips" role="group" aria-label="Filter by time control">

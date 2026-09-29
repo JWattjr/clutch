@@ -67,6 +67,10 @@ async function waitForServer(server) {
   throw new Error(`Timed out waiting for the local app at ${baseUrl}.`);
 }
 
+async function waitForMapArt(page) {
+  await page.locator(".map-world-image").evaluate((image) => image.decode());
+}
+
 async function runUi(page) {
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -75,7 +79,11 @@ async function runUi(page) {
   await page.getByRole("heading", { name: "Make your next game count." }).waitFor({ state: "visible", timeout: 15_000 });
   assert.match(await page.title(), /Clutch/);
   assert.equal(await page.getByRole("region", { name: "Quest map" }).count(), 1);
-  assert.equal(await page.getByText("NO LIVE REWARDS").count(), 1);
+  assert.equal(await page.getByText("NO LIVE REWARDS", { exact: true }).count(), 1);
+
+  await page.getByRole("button", { name: /Blitz Grove: 1 sample quest/ }).click();
+  await page.getByRole("dialog").waitFor({ state: "visible" });
+  await page.getByRole("button", { name: "Close quest details" }).click();
 
   await page.getByRole("button", { name: "List" }).click();
   assert.equal(await page.getByRole("button", { name: "List" }).getAttribute("aria-pressed"), "true");
@@ -95,6 +103,7 @@ async function runUi(page) {
 
   await page.getByRole("button", { name: "Quest map" }).click();
   await page.getByRole("button", { name: "Map", exact: true }).click();
+  await waitForMapArt(page);
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: resolve(outputDir, "clutch-desktop-1440.png") });
   await page.screenshot({ path: resolve(reviewDir, "desktop.png"), fullPage: true });
@@ -109,6 +118,7 @@ async function runResponsive(page) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
     await page.getByRole("heading", { name: "Make your next game count." }).waitFor({ state: "visible", timeout: 15_000 });
+    await waitForMapArt(page);
     const metrics = await page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
       content: document.documentElement.scrollWidth,
@@ -119,6 +129,12 @@ async function runResponsive(page) {
     await page.screenshot({ path: resolve(outputDir, `clutch-${width}.png`) });
     await page.screenshot({ path: resolve(reviewDir, `user-${width}.png`), fullPage: width !== 390 });
     if (width === 390) await page.screenshot({ path: resolve(reviewDir, "mobile.png"), fullPage: true });
+    if (width === 390) {
+      const map = page.locator(".map-stage");
+      assert.equal(await map.evaluate((element) => element.scrollWidth > element.clientWidth), true, "Mobile map should be horizontally explorable.");
+      await page.getByRole("button", { name: /Classical Summit: 1 sample quest/ }).focus();
+      assert.equal(await map.evaluate((element) => element.scrollLeft > 0), true, "Keyboard focus should reveal an off-screen destination.");
+    }
     console.log(`PASS: ${width}px responsive layout; document width ${metrics.content}px.`);
   }
 }
