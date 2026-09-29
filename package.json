@@ -14,6 +14,7 @@
     "test:rules": "node scripts/python.mjs -X utf8 -m pytest -p no:cacheprovider tests/direct/test_rules.py -q",
     "test:direct": "node scripts/python.mjs -X utf8 -m pytest -p no:cacheprovider tests/direct -q",
     "test:integration": "tsx scripts/integration-flow.ts",
+    "test:fast-slot": "tsx scripts/create-test-slot.ts",
     "test:ui": "node scripts/test-browser.mjs ui",
     "test:responsive": "node scripts/test-browser.mjs responsive",
     "lint": "eslint app components lib scripts",

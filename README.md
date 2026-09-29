@@ -6,7 +6,7 @@ The supplied artboard established the arcade mood and palette. The quest map use
 
 ## Current status
 
-Clutch 0.1.1 is deployed to Studionet at `0x4FbfC02007698A4e5322c34A544934EbF8b73552` on chain `61999`. Live validator consensus passed for a test-only public Lichess game/profile probe, supported and unsupported quest compilation, and a user-controlled `wattxbt` profile link. One 25-DEMO quest is active with a future time window. The production frontend build is READY at [clutch-genlayer.vercel.app](https://clutch-genlayer.vercel.app), but Vercel SSO currently blocks public access. Local checks passed, including 43 direct VM cases, strict TypeScript, ESLint, production build, browser smoke, and responsive checks. The player cannot enroll until the play window opens, and no fresh game claim has been submitted. No Portal entry has been submitted. See [the feasibility record](docs/FEASIBILITY.md) and [review handoff](docs/REVIEW_HANDOFF.md) for transaction receipts and remaining steps.
+Clutch 0.1.1 is deployed to Studionet at `0x4FbfC02007698A4e5322c34A544934EbF8b73552` on chain `61999`. Live validator consensus passed for a test-only public Lichess game/profile probe, supported and unsupported quest compilation, and a user-controlled `wattxbt` profile link. A same-day 1-DEMO quest opens at 17:49 WAT, with the original 25-DEMO quest scheduled for September 30. The production frontend build is READY at [clutch-genlayer.vercel.app](https://clutch-genlayer.vercel.app), but Vercel SSO currently blocks public access. Local checks passed, including 43 direct VM cases, strict TypeScript, ESLint, production build, browser smoke, and responsive checks. Neither quest has a fresh game claim yet. No Portal entry has been submitted. See [the feasibility record](docs/FEASIBILITY.md) and [review handoff](docs/REVIEW_HANDOFF.md) for transaction receipts and remaining steps.
 
 ## Stack
 
@@ -107,6 +107,8 @@ npm run verify:proof
 ```
 
 Each phase waits for a finalized transaction with successful execution and majority agreement, then saves non-secret progress under `deployments/integration-<run-id>.json`. A non-qualifying or unavailable game remains an actual failed/insufficient receipt; it is not reported as a pass. `npm run test:integration -- status` prints the saved progress for that run.
+
+After a user-controlled Lichess profile is linked, `npm run test:fast-slot` creates a one-hour test quest that opens 20 minutes later. It uses a 1 DEMO reward and refuses to overlap another active quest. The default slot record uses the current UTC date; set `CLUTCH_TEST_SLOT_ID` to choose another record ID. For a created slot, set `CLUTCH_INTEGRATION_RUN_ID` to its record ID (for example, `fast-slot-20260929`) before running the `join` and `claim` phases above.
 
 ## Project notes
 

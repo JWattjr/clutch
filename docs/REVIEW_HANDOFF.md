@@ -2,7 +2,7 @@
 
 ## Status
 
-Clutch 0.1.1 is deployed to Studionet, its supported and unsupported compiler paths passed live consensus, and one sponsor-funded DEMO quest is active with a future window. The test-only Lichess probe passed live validator reads for a public game and public profile; the user-controlled `wattxbt` account was subsequently linked through a successful live transaction. The production frontend build is READY on Vercel, but Vercel SSO currently prevents public access. Enrollment awaits the play-window start, no qualifying game has been claimed, and no Portal entry has been submitted.
+Clutch 0.1.1 is deployed to Studionet, its supported and unsupported compiler paths passed live consensus, and two sponsor-funded DEMO quests are active: a same-day 1-DEMO test slot and a 25-DEMO follow-up slot. The test-only Lichess probe passed live validator reads for a public game and public profile; the user-controlled `wattxbt` account was subsequently linked through a successful live transaction. The production frontend build is READY on Vercel, but Vercel SSO currently prevents public access. Enrollment awaits the same-day slot's start, no qualifying game has been claimed, and no Portal entry has been submitted.
 
 ## Required reviewer checks
 
@@ -24,7 +24,8 @@ Clutch 0.1.1 is deployed to Studionet, its supported and unsupported compiler pa
 - Test-only validator probe: contract `0xA077BbEE06D38514f5563460872908886ff103b3`. Validators independently fetched and agreed on normalized data for public game `q7ZvsdUF` and anonymous public profile `thibault`. This proves the tested public endpoint paths, not a user-controlled profile link or a qualifying claim. Receipts are linked in `docs/FEASIBILITY.md`.
 - Clutch deployment: version `clutch/0.1.1`, address `0x4FbfC02007698A4e5322c34A544934EbF8b73552`, source SHA-256 `246d517789f5f906e496bd06ddc9d1c69e687a8ccc1c40290e7629ba6a81366d`. Deployment transaction: `0xa1eceb722572aa18b22de72f59dba26883b5a8075edfb50134359e3a988e41a3`.
 - Live compiler: “Win a rated blitz game as White in no more than 40 full moves” compiled to `max_plies: 80`, with frozen hash `029b664ce68022226bf6fd74363a0ad3e879d1ad51f468846ea5a0e843a77af3`. “Win three games consecutively” was stored as `UNSUPPORTED` / `UNSUPPORTED_MULTIGAME` with null rules.
-- Active demo quest: `quest-1`, 25 DEMO reserved, start `2026-09-30T06:45:30.173Z`, end `2026-10-02T06:45:30.173Z`. Activation transaction is `0x13a938331ee03e8861c1303b2cfe356d751e2f4fbf6c8412cb5c86b670b44d37`. The expiry/refund boundary has not been tested live.
+- Scheduled demo quest: `quest-1`, 25 DEMO reserved, start `2026-09-30T06:45:30.173Z`, end `2026-10-02T06:45:30.173Z`. Activation transaction is `0x13a938331ee03e8861c1303b2cfe356d751e2f4fbf6c8412cb5c86b670b44d37`.
+- Same-day test slot: `quest-3`, 1 DEMO reserved, start `2026-09-29T16:49:32.643Z`, end `2026-09-29T17:49:32.643Z` (`17:49–18:49 WAT`). [Activation receipt](https://explorer-studio.genlayer.com/tx/0x9fb26ed7672e313dd94e9f1b7609ab9a604f34882ae98b4b3f7978a4121c37df). The contract has a one-hour minimum window; overlapping slot quests are blocked by the helper to prevent duplicate-game awards across quests.
 - Frontend deployment: project `clutch-genlayer`, alias [https://clutch-genlayer.vercel.app](https://clutch-genlayer.vercel.app). Vercel reports READY and the production build passed. Default SSO protection blocks public visitors; there is no custom domain. Automatic approval review rejected disabling SSO because explicit approval for that security-setting change was not present. Do not try an alternate path around that review; ask for explicit user approval or use a custom domain.
 - Wallet linking: the user placed the exact challenge in `wattxbt`'s public bio. The [link transaction](https://explorer-studio.genlayer.com/tx/0x4b302a22770eead8fadc538fbb3bb740e9c79958652f96660690972dd024ef2e) finalized with successful execution and majority agreement; the contract confirmed the binding to the throwaway player wallet. The temporary bio text can be removed.
 - Enrollment: an attempt before the scheduled play window [finalized with an execution error](https://explorer-studio.genlayer.com/tx/0x7f6ed6c9b0e50903e875c0dd85bcd9cb746ffd7894ada7061a746500ec2f3b62). The contract requires joining after the window opens. The player is not enrolled yet.
@@ -36,7 +37,8 @@ Clutch 0.1.1 is deployed to Studionet, its supported and unsupported compiler pa
 
 1. Choose whether to authorize disabling SSO for this Clutch Vercel project or provide a custom domain.
 2. Remove the temporary Lichess bio challenge if desired; the account link is already verified.
-3. Let the player wallet enroll after the play window opens on September 30 at 07:45 WAT, before starting a qualifying game.
-4. Play a qualifying game after enrollment, then provide its Lichess game ID for claim verification.
+3. For today's slot, enroll after `quest-3` opens at 17:49 WAT and before starting a qualifying game. The command uses `CLUTCH_INTEGRATION_RUN_ID=fast-slot-20260929`.
+4. If today's slot is missed, enroll in `quest-1` after it opens September 30 at 07:45 WAT.
+5. Play a qualifying game after enrollment, then provide its Lichess game ID for claim verification.
 
 No Portal submission should be made until the public frontend and user-controlled account-to-claim flow are demonstrated. See `docs/FEASIBILITY.md` for transaction links and dependency evidence.
