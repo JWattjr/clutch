@@ -2,7 +2,7 @@
 
 ## Status
 
-Clutch 0.1.1 is deployed to Studionet, its supported and unsupported compiler paths passed live consensus, and two sponsor-funded DEMO quests are active: a same-day 1-DEMO test slot and a 25-DEMO follow-up slot. The test-only Lichess probe passed live validator reads for a public game and public profile; the user-controlled `wattxbt` account was subsequently linked through a successful live transaction. The production frontend build is READY on Vercel, but Vercel SSO currently prevents public access. Enrollment awaits the same-day slot's start, no qualifying game has been claimed, and no Portal entry has been submitted.
+Clutch 0.1.1 is deployed to Studionet, its supported and unsupported compiler paths passed live consensus, and two sponsor-funded DEMO quests are active: a same-day 1-DEMO test slot and a 25-DEMO follow-up slot. The test-only Lichess probe passed live validator reads for a public game and public profile; the user-controlled `wattxbt` account was linked and successfully enrolled after the same-day slot opened. The production frontend build is READY on Vercel, but Vercel SSO currently prevents public access. No qualifying game has been claimed, and no Portal entry has been submitted.
 
 ## Required reviewer checks
 
@@ -28,7 +28,7 @@ Clutch 0.1.1 is deployed to Studionet, its supported and unsupported compiler pa
 - Same-day test slot: `quest-3`, 1 DEMO reserved, start `2026-09-29T16:49:32.643Z`, end `2026-09-29T17:49:32.643Z` (`17:49–18:49 WAT`). [Activation receipt](https://explorer-studio.genlayer.com/tx/0x9fb26ed7672e313dd94e9f1b7609ab9a604f34882ae98b4b3f7978a4121c37df). The contract has a one-hour minimum window; overlapping slot quests are blocked by the helper to prevent duplicate-game awards across quests.
 - Frontend deployment: project `clutch-genlayer`, alias [https://clutch-genlayer.vercel.app](https://clutch-genlayer.vercel.app). Vercel reports READY and the production build passed. Default SSO protection blocks public visitors; there is no custom domain. Automatic approval review rejected disabling SSO because explicit approval for that security-setting change was not present. Do not try an alternate path around that review; ask for explicit user approval or use a custom domain.
 - Wallet linking: the user placed the exact challenge in `wattxbt`'s public bio. The [link transaction](https://explorer-studio.genlayer.com/tx/0x4b302a22770eead8fadc538fbb3bb740e9c79958652f96660690972dd024ef2e) finalized with successful execution and majority agreement; the contract confirmed the binding to the throwaway player wallet. The temporary bio text can be removed.
-- Enrollment: an attempt before the scheduled play window [finalized with an execution error](https://explorer-studio.genlayer.com/tx/0x7f6ed6c9b0e50903e875c0dd85bcd9cb746ffd7894ada7061a746500ec2f3b62). The contract requires joining after the window opens. The player is not enrolled yet.
+- Enrollment: the first attempt before the scheduled play window [finalized with an execution error](https://explorer-studio.genlayer.com/tx/0x7f6ed6c9b0e50903e875c0dd85bcd9cb746ffd7894ada7061a746500ec2f3b62), as expected by the contract guard. After `quest-3` opened, the linked wallet enrolled at `2026-09-29T16:49:56.978Z`; [successful enrollment receipt](https://explorer-studio.genlayer.com/tx/0x48564c89c20aa65c53500d3376ba06de7c37b8aec78ea53a1af1ae59ae562b7e).
 - Claim: no newly played post-activation game has been submitted; no claim or settlement is represented as successful.
 - Portal: no entry has been submitted.
 - Sanitized live records are in ignored `deployments/studionet.json`, `deployments/validator-probe-studionet.json`, and `deployments/integration-clutch-live-20260929-v2.json`. Private keys and deployment credentials remain only in local ignored environment files.
@@ -37,8 +37,7 @@ Clutch 0.1.1 is deployed to Studionet, its supported and unsupported compiler pa
 
 1. Choose whether to authorize disabling SSO for this Clutch Vercel project or provide a custom domain.
 2. Remove the temporary Lichess bio challenge if desired; the account link is already verified.
-3. For today's slot, enroll after `quest-3` opens at 17:49 WAT and before starting a qualifying game. The command uses `CLUTCH_INTEGRATION_RUN_ID=fast-slot-20260929`.
-4. If today's slot is missed, enroll in `quest-1` after it opens September 30 at 07:45 WAT.
-5. Play a qualifying game after enrollment, then provide its Lichess game ID for claim verification.
+3. Play a qualifying game that finishes by 18:49:32 WAT today, then provide its Lichess game ID for claim verification.
+4. If today's slot is missed, enroll in `quest-1` after it opens September 30 at 07:45 WAT and play before its end on October 2.
 
 No Portal submission should be made until the public frontend and user-controlled account-to-claim flow are demonstrated. See `docs/FEASIBILITY.md` for transaction links and dependency evidence.

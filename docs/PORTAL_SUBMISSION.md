@@ -21,16 +21,17 @@ Lichess, standard chess, one completed game per claim, one successful claim per 
 - Independent validator probe: [public game read](https://explorer-studio.genlayer.com/tx/0x6b75c0fdf2b6eed0d16b7d5f48bfc110aaf76bad58f1a40949bb166dae726fe5) and [anonymous profile read](https://explorer-studio.genlayer.com/tx/0xf486093b8d58d20b8cf2e41dfb7ca0619456741be731966fc6124d0fc30cf713), both finalized with successful execution and majority agreement.
 - Compiler: live supported and unsupported descriptions both settled with majority agreement. Receipts and canonical fields are in `docs/FEASIBILITY.md`.
 - Quest: a supported 25-DEMO quest activated with a scheduled future window; [activation transaction](https://explorer-studio.genlayer.com/tx/0x13a938331ee03e8861c1303b2cfe356d751e2f4fbf6c8412cb5c86b670b44d37).
-- Same-day test slot: a second quest with the same rules and a 1 DEMO reward opens at 17:49 WAT on September 29 for one hour; [activation transaction](https://explorer-studio.genlayer.com/tx/0x9fb26ed7672e313dd94e9f1b7609ab9a604f34882ae98b4b3f7978a4121c37df).
+- Same-day test slot: a second quest with the same rules and a 1 DEMO reward opened at 17:49 WAT on September 29 for one hour; [activation transaction](https://explorer-studio.genlayer.com/tx/0x9fb26ed7672e313dd94e9f1b7609ab9a604f34882ae98b4b3f7978a4121c37df).
 - Account ownership: the user placed the exact challenge in `wattxbt`'s public profile bio; the [link transaction](https://explorer-studio.genlayer.com/tx/0x4b302a22770eead8fadc538fbb3bb740e9c79958652f96660690972dd024ef2e) finalized with successful execution and majority agreement. The contract bound the stable Lichess ID to the throwaway player wallet.
+- Enrollment: the linked player joined the same-day `quest-3` slot after it opened; [enrollment transaction](https://explorer-studio.genlayer.com/tx/0x48564c89c20aa65c53500d3376ba06de7c37b8aec78ea53a1af1ae59ae562b7e).
 - Local engineering checks: GenVM lint, schema generation, 43 direct tests, TypeScript, ESLint, production build, browser smoke, and responsive checks passed.
 
 ## Evidence still required
 
 - Make the production frontend publicly accessible. Vercel SSO disablement was rejected by automatic approval review pending explicit approval; a custom domain is another option.
-- Enroll the linked player after the quest window opens on September 30 at 07:45 WAT and before playing, then submit a newly played qualifying game. Attach its normalized evidence and claim settlement receipts.
+- Submit a newly played qualifying game completed by 18:49:32 WAT on September 29. Attach its normalized evidence and claim settlement receipts. If that slot is missed, use the September 30 quest.
 - Exercise expiry/refund accounting if it is required for the reviewer checklist.
 
 ## Honest current status
 
-The deployment, public-source validator reads, supported/unsupported compiler outcomes, quest activation, and user-controlled account linking have live evidence. Enrollment and a live claim have not been demonstrated, and the Vercel URL remains SSO protected. A pre-window enrollment attempt correctly finalized with an execution error and did not enroll the player. Do not submit this as an end-to-end verified demonstration or claim guaranteed Portal points until those gaps are closed. No Portal entry has been submitted.
+The deployment, public-source validator reads, supported/unsupported compiler outcomes, quest activation, user-controlled account linking, and player enrollment have live evidence. A fresh qualifying game and claim have not been demonstrated, and the Vercel URL remains SSO protected. A pre-window enrollment attempt finalized with an execution error; enrollment later succeeded after the slot opened. Do not submit this as an end-to-end verified demonstration or claim guaranteed Portal points until those gaps are closed. No Portal entry has been submitted.
