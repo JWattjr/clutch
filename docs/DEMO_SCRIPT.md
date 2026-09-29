@@ -28,4 +28,4 @@
 
 The app preview, sample quest details, sponsor view, and proof shelf are available without a deployment. For a real test run, use the staged commands in the README. They stop after issuing the exact profile challenge, which the player must place in their own Lichess bio. Use a newly played game after activation and enrollment for the live flow; historical replay never awards units.
 
-No contract, account link, fresh-game claim, or Studio Net validator receipt has been verified from this workspace yet. The host blocks the tested outbound RPC and Lichess requests; see `FEASIBILITY.md`.
+The Clutch contract is deployed on Studionet. Live validator receipts exist for completed-game and public-profile reads, supported and unsupported rule compilation, and quest activation. Account ownership has not yet been verified through a user-controlled profile change, and no fresh-game claim has been awarded. See `FEASIBILITY.md` and `REVIEW_HANDOFF.md` for the current evidence and remaining steps.
