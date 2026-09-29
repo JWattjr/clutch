@@ -20,7 +20,7 @@
 1. Connect the wallet and request a profile-link challenge for a normalized Lichess user ID.
 2. Copy the exact text into that account's profile bio.
 3. Complete the link and wait for finalized execution. Remove the bio nonce afterward.
-4. Join an active quest before playing. Enrollment freezes wallet, stable account ID, and time.
+4. Join after the play window opens and before starting a game. Enrollment freezes wallet, stable account ID, and time.
 5. Play one new qualifying standard game on Lichess and submit its eight-character game ID before the claim deadline.
 6. Inspect each predicate, normalized source evidence, consensus transaction, and the public award receipt.
 
@@ -28,4 +28,4 @@
 
 The app preview, sample quest details, sponsor view, and proof shelf are available without a deployment. For a real test run, use the staged commands in the README. They stop after issuing the exact profile challenge, which the player must place in their own Lichess bio. Use a newly played game after activation and enrollment for the live flow; historical replay never awards units.
 
-The Clutch contract is deployed on Studionet. Live validator receipts exist for completed-game and public-profile reads, supported and unsupported rule compilation, and quest activation. Account ownership has not yet been verified through a user-controlled profile change, and no fresh-game claim has been awarded. See `FEASIBILITY.md` and `REVIEW_HANDOFF.md` for the current evidence and remaining steps.
+The Clutch contract is deployed on Studionet. Live validator receipts exist for completed-game and public-profile reads, supported and unsupported rule compilation, quest activation, and the user-controlled `wattxbt` account link. The play window has not opened, so the player has not enrolled; no fresh-game claim has been awarded. See `FEASIBILITY.md` and `REVIEW_HANDOFF.md` for the current evidence and remaining steps.

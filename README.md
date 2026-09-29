@@ -6,7 +6,7 @@ The supplied artboard established the arcade mood and palette. The quest map use
 
 ## Current status
 
-Clutch 0.1.1 is deployed to Studionet at `0x4FbfC02007698A4e5322c34A544934EbF8b73552` on chain `61999`. Live validator consensus passed for a test-only public Lichess game/profile probe and for supported and unsupported quest compilation. One 25-DEMO quest is active with a future time window. The production frontend build is READY at [clutch-genlayer.vercel.app](https://clutch-genlayer.vercel.app), but Vercel SSO currently blocks public access. Local checks passed, including 43 direct VM cases, strict TypeScript, ESLint, production build, browser smoke, and responsive checks. No user-controlled Lichess account is linked and no fresh game claim has been submitted. No Portal entry has been submitted. See [the feasibility record](docs/FEASIBILITY.md) and [review handoff](docs/REVIEW_HANDOFF.md) for transaction receipts and remaining steps.
+Clutch 0.1.1 is deployed to Studionet at `0x4FbfC02007698A4e5322c34A544934EbF8b73552` on chain `61999`. Live validator consensus passed for a test-only public Lichess game/profile probe, supported and unsupported quest compilation, and a user-controlled `wattxbt` profile link. One 25-DEMO quest is active with a future time window. The production frontend build is READY at [clutch-genlayer.vercel.app](https://clutch-genlayer.vercel.app), but Vercel SSO currently blocks public access. Local checks passed, including 43 direct VM cases, strict TypeScript, ESLint, production build, browser smoke, and responsive checks. The player cannot enroll until the play window opens, and no fresh game claim has been submitted. No Portal entry has been submitted. See [the feasibility record](docs/FEASIBILITY.md) and [review handoff](docs/REVIEW_HANDOFF.md) for transaction receipts and remaining steps.
 
 ## Stack
 
@@ -99,7 +99,7 @@ npm run test:integration -- verify-link
 npm run test:integration -- join
 ```
 
-Play a new, qualifying game after activation and enrollment. Set `CLUTCH_PROBE_GAME_ID` to that game’s eight-character Lichess ID, then run:
+The contract permits enrollment only after the quest's play window opens. Run `join` then, before starting a game. Play a new, qualifying game after enrollment. Set `CLUTCH_PROBE_GAME_ID` to that game’s eight-character Lichess ID, then run:
 
 ```powershell
 npm run test:integration -- claim

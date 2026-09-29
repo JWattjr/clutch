@@ -2,7 +2,7 @@
 
 ## Status
 
-Clutch 0.1.1 is deployed to Studionet, its supported and unsupported compiler paths passed live consensus, and one sponsor-funded DEMO quest is active with a future window. The test-only Lichess probe also passed live validator reads for a public game and public profile. The production frontend build is READY on Vercel, but Vercel SSO currently prevents public access. No user account has been linked, no qualifying game has been claimed, and no Portal entry has been submitted.
+Clutch 0.1.1 is deployed to Studionet, its supported and unsupported compiler paths passed live consensus, and one sponsor-funded DEMO quest is active with a future window. The test-only Lichess probe passed live validator reads for a public game and public profile; the user-controlled `wattxbt` account was subsequently linked through a successful live transaction. The production frontend build is READY on Vercel, but Vercel SSO currently prevents public access. Enrollment awaits the play-window start, no qualifying game has been claimed, and no Portal entry has been submitted.
 
 ## Required reviewer checks
 
@@ -26,7 +26,8 @@ Clutch 0.1.1 is deployed to Studionet, its supported and unsupported compiler pa
 - Live compiler: “Win a rated blitz game as White in no more than 40 full moves” compiled to `max_plies: 80`, with frozen hash `029b664ce68022226bf6fd74363a0ad3e879d1ad51f468846ea5a0e843a77af3`. “Win three games consecutively” was stored as `UNSUPPORTED` / `UNSUPPORTED_MULTIGAME` with null rules.
 - Active demo quest: `quest-1`, 25 DEMO reserved, start `2026-09-30T06:45:30.173Z`, end `2026-10-02T06:45:30.173Z`. Activation transaction is `0x13a938331ee03e8861c1303b2cfe356d751e2f4fbf6c8412cb5c86b670b44d37`. The expiry/refund boundary has not been tested live.
 - Frontend deployment: project `clutch-genlayer`, alias [https://clutch-genlayer.vercel.app](https://clutch-genlayer.vercel.app). Vercel reports READY and the production build passed. Default SSO protection blocks public visitors; there is no custom domain. Automatic approval review rejected disabling SSO because explicit approval for that security-setting change was not present. Do not try an alternate path around that review; ask for explicit user approval or use a custom domain.
-- Wallet linking: no challenge has been issued for a user-controlled Lichess ID and no profile was edited. The live profile probe used the public sample account `thibault` only.
+- Wallet linking: the user placed the exact challenge in `wattxbt`'s public bio. The [link transaction](https://explorer-studio.genlayer.com/tx/0x4b302a22770eead8fadc538fbb3bb740e9c79958652f96660690972dd024ef2e) finalized with successful execution and majority agreement; the contract confirmed the binding to the throwaway player wallet. The temporary bio text can be removed.
+- Enrollment: an attempt before the scheduled play window [finalized with an execution error](https://explorer-studio.genlayer.com/tx/0x7f6ed6c9b0e50903e875c0dd85bcd9cb746ffd7894ada7061a746500ec2f3b62). The contract requires joining after the window opens. The player is not enrolled yet.
 - Claim: no newly played post-activation game has been submitted; no claim or settlement is represented as successful.
 - Portal: no entry has been submitted.
 - Sanitized live records are in ignored `deployments/studionet.json`, `deployments/validator-probe-studionet.json`, and `deployments/integration-clutch-live-20260929-v2.json`. Private keys and deployment credentials remain only in local ignored environment files.
@@ -34,7 +35,8 @@ Clutch 0.1.1 is deployed to Studionet, its supported and unsupported compiler pa
 ## Remaining user actions
 
 1. Choose whether to authorize disabling SSO for this Clutch Vercel project or provide a custom domain.
-2. Provide a stable Lichess ID for an account the user controls. The user must add the exact generated challenge to that account's profile bio.
-3. Play a qualifying game after activation and enrollment, then provide its Lichess game ID for claim verification.
+2. Remove the temporary Lichess bio challenge if desired; the account link is already verified.
+3. Let the player wallet enroll after the play window opens on September 30 at 07:45 WAT, before starting a qualifying game.
+4. Play a qualifying game after enrollment, then provide its Lichess game ID for claim verification.
 
 No Portal submission should be made until the public frontend and user-controlled account-to-claim flow are demonstrated. See `docs/FEASIBILITY.md` for transaction links and dependency evidence.

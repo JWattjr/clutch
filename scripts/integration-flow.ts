@@ -221,6 +221,10 @@ async function main(): Promise<void> {
   if (phase === "join") {
     const { account, client } = makeWriter("CLUTCH_PROBE_PLAYER_PRIVATE_KEY");
     if (!sameAddress(state.player, account.address) || !state.linkTx) throw new Error("Verify the profile challenge first and use the saved player key.");
+    const quest = await read<Quest>(reader, address, "get_quest", [state.questId]);
+    if (quest.state !== "ACTIVE") throw new Error(`Quest ${state.questId} is ${quest.state}; enrollment requires an active quest.`);
+    if (Date.now() < quest.starts_at_ms) throw new Error(`The play window opens ${new Date(quest.starts_at_ms).toISOString()}. Join after it opens and before starting a game.`);
+    if (Date.now() > quest.ends_at_ms) throw new Error(`The play window closed ${new Date(quest.ends_at_ms).toISOString()}; new enrollment is unavailable.`);
     const result = await writeAndWait(client, address, "join_quest", [state.questId], "Join the integration quest");
     const enrollment = await read<Enrollment>(reader, address, "get_enrollment", [state.questId, account.address]);
     if (!enrollment.enrolled) throw new Error("Join transaction finalized, but the enrollment view did not confirm it.");

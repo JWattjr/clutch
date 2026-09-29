@@ -1,6 +1,6 @@
 # Dependency feasibility record
 
-Checked 2026-09-28 and updated 2026-09-29 from the Clutch workspace. Read-only host checks and authorized Studionet transactions passed through the elevated network path. The ordinary workspace sandbox still blocks outbound sockets. The evidence below distinguishes host requests from validator consensus. No account-link transaction or live claim is represented as successful.
+Checked 2026-09-28 and updated 2026-09-29 from the Clutch workspace. Read-only host checks and authorized Studionet transactions passed through the elevated network path. The ordinary workspace sandbox still blocks outbound sockets. The evidence below distinguishes host requests from validator consensus. The user-controlled account link succeeded; no enrollment or live claim is represented as successful.
 
 ## Probe results
 
@@ -80,7 +80,7 @@ Live integration prepare compiled and stored both outcomes. The supported quest 
 
 The production Next.js build is deployed and READY at [clutch-genlayer.vercel.app](https://clutch-genlayer.vercel.app). Vercel SSO protection currently blocks public visitors; there is no custom domain on the project. A request to disable SSO was rejected by automatic approval review because that security-setting change needs explicit approval. This must be resolved before claiming the public frontend is accessible.
 
-No account-link challenge has been issued for a user-controlled profile, and there is no fresh post-activation game or claim. No Portal entry has been submitted. These steps require the user's stable Lichess ID, a profile-bio edit by the user, and a newly played qualifying game.
+The user placed the deployment-bound challenge in the public bio of `wattxbt`. The [account-link transaction](https://explorer-studio.genlayer.com/tx/0x4b302a22770eead8fadc538fbb3bb740e9c79958652f96660690972dd024ef2e) finalized with successful execution and majority agreement, and the contract view confirmed that `wattxbt` is bound to the throwaway player wallet `0xF1E3457DD27470344B615343e991c6D30fc8BE91`. The bio text can now be removed. An attempted [enrollment before the play window](https://explorer-studio.genlayer.com/tx/0x7f6ed6c9b0e50903e875c0dd85bcd9cb746ffd7894ada7061a746500ec2f3b62) finalized with an execution error; `join_quest` requires the window to be open. No enrollment or fresh-game claim has succeeded, and no Portal entry has been submitted.
 
 ## Primary references
 
@@ -100,6 +100,6 @@ On 2026-09-29, the workspace passed the local checks: GenVM lint (3 checks), sch
 ## Next live probe sequence
 
 1. Resolve public frontend access by explicitly authorizing the Vercel SSO change for this project or supplying a custom domain.
-2. Ask the user for a Lichess ID they control, issue the deployment-bound challenge, and have the user add the exact challenge string to their public profile bio. Verify the profile and link transaction.
-3. Enroll the linked player, then submit a newly played qualifying game from the active quest window. Inspect the public evidence receipt and DEMO accounting.
+2. After `2026-09-30T06:45:30.173Z`, enroll the verified `wattxbt` player wallet before any qualifying game starts.
+3. Submit a newly played qualifying game that finishes before `2026-10-02T06:45:30.173Z`. Inspect the public evidence receipt and DEMO accounting.
 4. Exercise the scheduled expiry/refund boundary after the active quest window, if still useful for the review.
