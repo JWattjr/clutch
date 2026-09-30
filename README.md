@@ -6,7 +6,7 @@ The supplied artboard established the arcade mood and palette. The quest map use
 
 ## Current status
 
-Clutch 0.1.1 is deployed to Studionet at `0x4FbfC02007698A4e5322c34A544934EbF8b73552` on chain `61999`. Live validator consensus passed for a test-only public Lichess game/profile probe, supported and unsupported quest compilation, a user-controlled `wattxbt` profile link, and enrollment in a same-day 1-DEMO quest. The original 25-DEMO quest remains scheduled for September 30. The production frontend build is READY at [clutch-genlayer.vercel.app](https://clutch-genlayer.vercel.app), but Vercel SSO currently blocks public access. Local checks passed, including 43 direct VM cases, strict TypeScript, ESLint, production build, browser smoke, and responsive checks. Neither quest has a fresh game claim yet. No Portal entry has been submitted. See [the feasibility record](docs/FEASIBILITY.md) and [review handoff](docs/REVIEW_HANDOFF.md) for transaction receipts and remaining steps.
+Clutch 0.1.1 is deployed to Studionet at `0x4FbfC02007698A4e5322c34A544934EbF8b73552` on chain `61999`. Live consensus passed for compiler paths, activation, Wattxbt’s profile link, enrollment, and a rejected game claim. Game yQjRuAAG was submitted for quest-3 and finalized as NOT_QUALIFIED: White lost on time, and completion was about 70 seconds after the play deadline. No reward was credited. [Claim receipt](https://explorer-studio.genlayer.com/tx/0xe52028156f01689e85b6bb08ee8c6e4f288d07c7882f70cd940d7f950c716201). A successful live award remains outstanding. The [public frontend](https://clutch-genlayer.vercel.app) returned HTTP 200 without cookies on September 30. No Portal entry has been submitted. See [the feasibility record](docs/FEASIBILITY.md) and [review handoff](docs/REVIEW_HANDOFF.md).
 
 ## Stack
 
@@ -30,6 +30,17 @@ npm run dev
 Without `NEXT_PUBLIC_CONTRACT_ADDRESS`, Clutch opens in preview mode. Example quests are visibly marked as samples and have no live reward. To connect a deployed board, set `NEXT_PUBLIC_CONTRACT_ADDRESS` and `NEXT_PUBLIC_RPC_URL` in `.env`, then restart the dev server.
 
 `npm run setup:python` creates a project-local `.venv` and installs the exact pins from `requirements.txt`. A first direct VM run also fetches the pinned GenVM runner into the ignored `.genvm-cache/` directory. Both downloads require package and release network access.
+
+## Easier demo flow
+
+- **Try a saved game** opens a wallet-free sandbox with Wattxbt’s real historical game. Replay never signs or awards DEMO.
+- **Set up the demo** offers 24-hour and 48-hour presets: casual standard draw, either color, any time control, no move limit, 1 DEMO. Dates use the browser’s displayed timezone. The preset starts 30 minutes ahead to allow compilation and activation; change it if needed.
+- Create the draft, compile, inspect the frozen rules and confirm before play opens. Join once the window opens, then play a fresh game against another human.
+- **Find my recent games** retrieves up to 12 finished public games after enrollment. Select one or paste its full Lichess URL; private player-link suffixes are stripped before submission.
+- **Check before signing** compares the public record with rules and timing. **Verify game · sign claim** asks validators for the final decision. Browser checks are advisory and do not check contract game reuse or guarantee settlement.
+- Failed receipts lead with unmatched conditions and observed values. Play closing and the separate claim deadline are shown explicitly.
+
+The deployed contract keeps its one-hour minimum and requires enrollment during the play window. Changing frontend presets does not change rules of already activated quests.
 
 ## Checks
 

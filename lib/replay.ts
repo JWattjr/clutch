@@ -1,20 +1,5 @@
-import type { EvidenceCheck, RuleSet } from "./contract";
-
-type LichessUser = { id?: string; title?: string };
-type LichessGame = {
-  id?: string;
-  rated?: boolean;
-  variant?: string;
-  speed?: string;
-  status?: string;
-  source?: string;
-  winner?: string;
-  createdAt?: number;
-  lastMoveAt?: number;
-  initialFen?: string;
-  moves?: string;
-  players?: { white?: LichessUser; black?: LichessUser };
-};
+import type { EvidenceCheck, Quest, RuleSet } from "./contract";
+import { fetchGame, parseGameId, type LichessGame } from "./lichess";
 
 export type ReplayResult = {
   gameId: string;
@@ -32,26 +17,23 @@ function pass(checks: EvidenceCheck[], condition: string, ok: boolean, code: str
 }
 
 export async function replayGame(gameId: string, rules: RuleSet, claimantLichessId: string): Promise<ReplayResult> {
-  if (!/^[A-Za-z0-9]{8}$/.test(gameId)) throw new Error("Lichess game IDs contain exactly 8 letters or numbers.");
-  const response = await fetch(`https://lichess.org/game/export/${gameId}?moves=true&tags=true&clocks=false&evals=false&opening=false`, {
-    headers: { Accept: "application/json" },
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    return { gameId, status: "INSUFFICIENT_EVIDENCE", checks: [{ condition: "Lichess response", status: "INSUFFICIENT_EVIDENCE", reason_code: "SOURCE_UNAVAILABLE", observed: response.status }], note: "Lichess did not return a usable game record. No reward path was called." };
-  }
-  const game = await response.json() as LichessGame;
+  const id = parseGameId(gameId);
+  return evaluateGame(await fetchGame(id), id, rules, claimantLichessId);
+}
+
+export function evaluateGame(game: LichessGame, gameId: string, rules: RuleSet, claimantLichessId: string): ReplayResult {
   const checks: EvidenceCheck[] = [];
-  const missing = [game.id, game.rated, game.variant, game.speed, game.status, game.source, game.createdAt, game.lastMoveAt, game.players?.white?.id, game.players?.black?.id, game.moves]
-    .some((item) => item === undefined || item === null);
+  const missing = typeof game.rated !== "boolean" ||
+    [game.id, game.variant, game.speed, game.status, game.source, game.players?.white?.user?.id, game.players?.black?.user?.id, game.moves].some((item) => typeof item !== "string" || !item) ||
+    [game.createdAt, game.lastMoveAt].some((item) => !Number.isSafeInteger(item) || (item ?? 0) <= 0);
   if (missing) {
     return { gameId, status: "INSUFFICIENT_EVIDENCE", checks: [{ condition: "Required game fields", status: "INSUFFICIENT_EVIDENCE", reason_code: "MISSING_GAME_FIELD", observed: null }], note: "The public game record is missing fields needed by this replay." };
   }
 
   const ruleSet = rules;
   const status = (game.status ?? "").toLowerCase();
-  const whiteId = game.players?.white?.id?.toLowerCase();
-  const blackId = game.players?.black?.id?.toLowerCase();
+  const whiteId = game.players?.white?.user?.id?.toLowerCase();
+  const blackId = game.players?.black?.user?.id?.toLowerCase();
   const claimantId = claimantLichessId.trim().toLowerCase();
   const color = claimantId && claimantId === whiteId ? "WHITE" : claimantId && claimantId === blackId ? "BLACK" : "NONE";
   const source = (game.source ?? "").toLowerCase();
@@ -67,7 +49,7 @@ export async function replayGame(gameId: string, rules: RuleSet, claimantLichess
   pass(checks, "Standard starting position", starterFen, "INVALID_VARIANT_START", game.initialFen ?? "standard start");
   pass(checks, "Finished game category", finished, "GAME_NOT_FINISHED", status);
   pass(checks, "Supported game source", LIVE_SOURCES.has(source), "GAME_SOURCE_DISALLOWED", source);
-  pass(checks, "No bot accounts", game.players?.white?.title !== "BOT" && game.players?.black?.title !== "BOT", "BOT_GAME_DISALLOWED", { white: game.players?.white?.title ?? "human", black: game.players?.black?.title ?? "human" });
+  pass(checks, "No bot accounts", game.players?.white?.user?.title !== "BOT" && game.players?.black?.user?.title !== "BOT", "BOT_GAME_DISALLOWED", { white: game.players?.white?.user?.title ?? "human", black: game.players?.black?.user?.title ?? "human" });
   pass(checks, "Rated status", ruleSet.rated === "ANY" || (ruleSet.rated === "REQUIRED" ? game.rated === true : game.rated === false), "RATED_MISMATCH", game.rated);
   pass(checks, "Time control", ruleSet.speed === "ANY" || game.speed?.toUpperCase() === ruleSet.speed, "SPEED_MISMATCH", game.speed);
   pass(checks, "Player color", ruleSet.player_color === "ANY" || color === ruleSet.player_color, "COLOR_MISMATCH", color);
@@ -94,4 +76,16 @@ export async function replayGame(gameId: string, rules: RuleSet, claimantLichess
     checks,
     note: "Historical replay is a client-side sandbox. It cannot enroll, claim, or credit DEMO units.",
   };
+}
+
+export function preflightGame(game: LichessGame, gameId: string, quest: Quest, username: string, enrolledAt: number): ReplayResult {
+  if (!quest.rules) throw new Error("This quest has no compiled rules yet.");
+  const result = evaluateGame(game, gameId, quest.rules, username);
+  const checks = result.checks.filter((check) => check.reason_code !== "HISTORICAL_REPLAY_ONLY");
+  if (result.status !== "INSUFFICIENT_EVIDENCE") {
+    pass(checks, "Game started after activation", (game.createdAt ?? 0) > quest.activated_at_ms, "GAME_BEFORE_ACTIVATION", game.createdAt);
+    pass(checks, "Game started after enrollment", enrolledAt > 0 && (game.createdAt ?? 0) > enrolledAt, "GAME_BEFORE_ENROLLMENT", { game_started: game.createdAt, enrolled_at: enrolledAt });
+    pass(checks, "Game completed in play window", (game.createdAt ?? 0) >= quest.starts_at_ms && (game.lastMoveAt ?? 0) >= (game.createdAt ?? 0) && (game.lastMoveAt ?? 0) <= quest.ends_at_ms, "GAME_OUTSIDE_WINDOW", { started_at_ms: game.createdAt, completed_at_ms: game.lastMoveAt, ends_at_ms: quest.ends_at_ms });
+  }
+  return { gameId, checks, status: checks.some((check) => check.status === "INSUFFICIENT_EVIDENCE") ? "INSUFFICIENT_EVIDENCE" : checks.some((check) => check.status === "FAIL") ? "DOES_NOT_MATCH" : "MATCHES_RULES", note: "Browser check only. Validators independently fetch the game; the contract checks enrollment, deadlines, game reuse and settlement before awarding DEMO." };
 }

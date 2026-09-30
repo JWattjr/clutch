@@ -56,7 +56,7 @@ Clutch puts an explicit, hash-bound checklist between natural-language intent an
 
 - The attached screenshot is a visual mood reference; the user explicitly asked for a more visual quest map instead of a literal copy.
 - The public Lichess game and profile paths passed a test-only live validator probe on Studionet.
-- Clutch 0.1.1 is deployed on Studionet, and supported/unsupported compiler paths and activation passed live consensus. A user-controlled account link and fresh post-activation game claim remain unverified.
+- Clutch 0.1.1 is deployed on Studionet, and supported/unsupported compiler paths and activation passed live consensus. The Wattxbt account link, enrollment, and a fresh game claim have live receipts. That claim was NOT_QUALIFIED; a successful award remains unverified.
 - Do not invent players, completed quests, achievements, proof receipts, or deployment claims.
 
 ## Product Principles

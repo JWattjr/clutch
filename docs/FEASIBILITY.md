@@ -1,6 +1,6 @@
 # Dependency feasibility record
 
-Checked 2026-09-28 and updated 2026-09-29 from the Clutch workspace. Read-only host checks and authorized Studionet transactions passed through the elevated network path. The ordinary workspace sandbox still blocks outbound sockets. The evidence below distinguishes host requests from validator consensus. The user-controlled account link succeeded; no enrollment or live claim is represented as successful.
+Checked 2026-09-28 and updated 2026-09-30 from the Clutch workspace. Read-only host checks and authorized Studionet transactions passed through the elevated network path. The ordinary workspace sandbox still blocks outbound sockets. The evidence below distinguishes host requests from validator consensus. The user-controlled account link and enrollment succeeded. A fresh game claim finalized as NOT_QUALIFIED; no successful award is represented.
 
 ## Probe results
 
@@ -8,7 +8,7 @@ Checked 2026-09-28 and updated 2026-09-29 from the Clutch workspace. Read-only h
 |---|---|---|
 | Read a completed Lichess game by ID from validators | **Passed** | The public example game `q7ZvsdUF` was independently fetched and agreed by validators in the isolated probe. Finalized receipt: [game consensus transaction](https://explorer-studio.genlayer.com/tx/0x6b75c0fdf2b6eed0d16b7d5f48bfc110aaf76bad58f1a40949bb166dae726fe5). The agreed normalized tuple included standard/rated/blitz/draw, both stable player IDs, source, timestamps, and 125 plies. |
 | Read a profile bio without a secret credential | **Passed** | Anonymous `GET https://lichess.org/api/user/thibault?profile=true` returned a stable ID and bio field; validators independently agreed on those public fields in the isolated probe. Finalized receipt: [profile consensus transaction](https://explorer-studio.genlayer.com/tx/0xf486093b8d58d20b8cf2e41dfb7ca0619456741be731966fc6124d0fc30cf713). |
-| Observe a user-entered nonce in that profile endpoint | **Pending user action** | The endpoint and validator read passed, but no Clutch link challenge has been issued and no user-controlled Lichess profile has been edited. Ask the user for the stable account ID, issue the exact deployment-bound challenge, then have them add it to their profile bio. |
+| Observe a user-entered nonce in that profile endpoint | **Passed for Wattxbt** | The user added the challenge; the account-link transaction finalized with successful execution and majority agreement. See the link receipt below. |
 | Independent validators agree on normalized game evidence | **Passed for the public example** | The isolated probe used `strict_eq` on normalized JSON and stored the agreed result after successful execution and majority agreement. This proves the tested endpoint path, not eligibility of a post-activation claim. |
 | Independent validators agree on compiled quest rules | **Passed on Clutch 0.1.1** | Live supported and unsupported draft compilations finalized successfully. The supported result matched the frozen schema; “Win three games consecutively.” stored `UNSUPPORTED` with `UNSUPPORTED_MULTIGAME`. Receipts and exact results are below. |
 | Deterministic expiry/deadline time | **Activation exercised; expiry boundary not tested live** | Clutch 0.1.1 accepted the scheduled window and activated `quest-1` with majority agreement. No expiry/refund boundary transaction has been run on Studionet. The GenLayer docs describe transaction timestamps as deterministic. |
@@ -80,7 +80,7 @@ Live integration prepare compiled and stored both outcomes. The supported quest 
 
 For same-day testing, `quest-3` is also active with the same canonical rules and a 1 DEMO reward. Its non-overlapping play window is `2026-09-29T16:49:32.643Z` to `2026-09-29T17:49:32.643Z` (`17:49–18:49 WAT`). The slot helper checks the linked player and sponsor balance, refuses overlap with another active quest, confirms the exact expected rules, and records the linked account receipt for later `join` and `claim` phases. [Draft](https://explorer-studio.genlayer.com/tx/0xbdc9436f833ac675fc7f433dd9fa86e019ad5fa4d5ed81e68f6aa4d0ea16cc52), [compile](https://explorer-studio.genlayer.com/tx/0x0c44dbad8797509cd43b66df5a4b7d5f815c78b806c044f8f045437bf4d6aeab), [activation](https://explorer-studio.genlayer.com/tx/0x9fb26ed7672e313dd94e9f1b7609ab9a604f34882ae98b4b3f7978a4121c37df). The player enrolled at `2026-09-29T16:49:56.978Z`; [enrollment receipt](https://explorer-studio.genlayer.com/tx/0x48564c89c20aa65c53500d3376ba06de7c37b8aec78ea53a1af1ae59ae562b7e). The deployed contract enforces a minimum one-hour window; separate 30-minute quests would overlap and could credit one game more than once.
 
-The production Next.js build is deployed and READY at [clutch-genlayer.vercel.app](https://clutch-genlayer.vercel.app). Vercel SSO protection currently blocks public visitors; there is no custom domain on the project. A request to disable SSO was rejected by automatic approval review because that security-setting change needs explicit approval. This must be resolved before claiming the public frontend is accessible.
+The [public frontend](https://clutch-genlayer.vercel.app) returned HTTP 200 without cookies on September 30. The earlier SSO access blocker is resolved.
 
 The user placed the deployment-bound challenge in the public bio of `wattxbt`. The [account-link transaction](https://explorer-studio.genlayer.com/tx/0x4b302a22770eead8fadc538fbb3bb740e9c79958652f96660690972dd024ef2e) finalized with successful execution and majority agreement, and the contract view confirmed that `wattxbt` is bound to the throwaway player wallet `0xF1E3457DD27470344B615343e991c6D30fc8BE91`. The bio text can now be removed. An attempted [enrollment before the play window](https://explorer-studio.genlayer.com/tx/0x7f6ed6c9b0e50903e875c0dd85bcd9cb746ffd7894ada7061a746500ec2f3b62) finalized with an execution error; `join_quest` requires the window to be open. The later enrollment in `quest-3` succeeded. No fresh-game claim has succeeded, and no Portal entry has been submitted.
 
@@ -99,9 +99,13 @@ The user placed the deployment-bound challenge in the public bio of `wattxbt`. T
 
 On 2026-09-29, the workspace passed the local checks: GenVM lint (3 checks), schema generation (23 contract methods: 13 views and 10 writes), 38 source rule tests, ESLint, strict TypeScript, production build, browser smoke, and responsive browser checks at 390, 768, 1280, and 1440 pixels. The direct VM suite passed all 43 cases, including five deterministic lifecycle tests using mocked model/profile inputs and the pinned local runner. These tests validate the local simulator path; independent live validator agreement is separately evidenced above.
 
+## Latest claim evidence
+
+Game yQjRuAAG was submitted for quest-3 and finalized as NOT_QUALIFIED: White lost on time, and completion was about 70 seconds after the play deadline. No reward was credited. [Claim receipt](https://explorer-studio.genlayer.com/tx/0xe52028156f01689e85b6bb08ee8c6e4f288d07c7882f70cd940d7f950c716201). A successful live award remains outstanding.
+
 ## Next live probe sequence
 
-1. Resolve public frontend access by explicitly authorizing the Vercel SSO change for this project or supplying a custom domain.
-2. Submit a newly played qualifying game in `quest-3`, which ends `2026-09-29T17:49:32.643Z`. The player is already enrolled. If that slot is missed, enroll in `quest-1` after `2026-09-30T06:45:30.173Z`.
+1. Use the new 24-hour or 48-hour casual-draw preset to create, compile and activate a future-window quest.
+2. Join once play opens, then start and finish a new qualifying game. Select it through recent-game discovery and submit before the separate claim deadline.
 3. Inspect the public evidence receipt and DEMO accounting.
 4. Exercise the scheduled expiry/refund boundary after the active quest window, if still useful for the review.

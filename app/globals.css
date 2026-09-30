@@ -371,3 +371,59 @@ a { color: var(--lavender); text-decoration-thickness: 1px; text-underline-offse
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* Guided game discovery and rule inspection use the existing arcade palette. */
+dialog.sheet-backdrop { width: 100%; height: 100dvh; max-width: none; max-height: none; margin: 0; border: 0; color: var(--ink); }
+dialog.sheet-backdrop:not([open]) { display: none; }
+dialog.sheet-backdrop::backdrop { background: #070813a6; }
+.quick-start { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 18px; }
+.quick-start h2, .next-move h3, .demo-preset h3 { margin: 0 0 6px; font-family: var(--font-body); font-size: 18px; letter-spacing: normal; }
+.quick-start p, .next-move p, .demo-preset p { margin: 0; color: var(--ink-muted); font-size: 14px; line-height: 1.6; }
+.game-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.game-actions > a { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.next-move { margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.next-move p { color: var(--ink); font-size: 16px; }
+.next-move small, .demo-preset small { display: block; margin-top: 8px; color: var(--ink-muted); font-size: 13px; }
+.sheet-feedback { margin: 12px 0 18px; padding: 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel-dark); font-size: 14px; overflow-wrap: anywhere; }
+.sheet-feedback p { margin: 0; }
+.sheet-feedback a { display: inline-block; margin-top: 8px; }
+.sheet-feedback.error { border-color: var(--coral); color: #ffd0cb; }
+.sheet-feedback.success { border-color: var(--mint); color: #b4f4d8; }
+.game-evidence { display: grid; gap: 12px; }
+.recent-game-list { display: grid; gap: 6px; }
+.recent-game { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 68px; padding: 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel-dark); color: var(--ink); text-align: left; cursor: pointer; }
+.recent-game:hover { border-color: var(--lavender); }
+.recent-game:disabled { opacity: .6; cursor: wait; }
+.recent-game strong { font-size: 14px; }
+.recent-game small { display: block; margin-top: 4px; color: var(--ink-muted); font-size: 13px; }
+.game-match { flex: 0 0 auto; font-size: 13px; }
+.game-match.mint { color: var(--mint); }
+.game-match.coral { color: #ffb5ae; }
+.preflight-result h4 { margin: 8px 0; font-size: 17px; }
+.preflight-result > p, .recent-game-list > p, .receipt-summary { color: var(--ink-muted); font-size: 14px; line-height: 1.6; }
+.observed-value { display: block; margin-top: 5px; color: #d1badf; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.failed-check { background: #493044; }
+.demo-preset { margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.demo-preset .game-actions { margin-top: 12px; }
+.sponsor-wallet-note .button-primary { margin-top: 12px; }
+.quest-sheet .field-help, .quest-sheet .fine-print, .quest-sheet .action-card > p, .quest-sheet .claim-intro, .quest-sheet .sheet-footnote, .sponsor-form .field-help { font-size: 13px; line-height: 1.6; }
+.quest-sheet .rules-checklist li, .quest-sheet .inline-form label, .quest-sheet .linked-row strong, .quest-sheet .timing-grid strong { font-size: 14px; }
+.quest-sheet .linked-row small, .quest-sheet .timing-grid span { font-size: 12px; }
+.quest-sheet .inline-form input { font-size: 16px; }
+.quest-sheet .evidence-check { min-height: 40px; font-size: 13px; padding: 8px 4px; align-items: start; }
+.quest-sheet .evidence-check strong { font-size: 12px; }
+.quest-sheet .block-title h3 { font-family: var(--font-body); font-size: 17px; letter-spacing: normal; }
+.quest-sheet .sheet-title-copy h2 { font-family: var(--font-body); font-size: 22px; letter-spacing: normal; line-height: 1.4; }
+.quest-sheet .button-primary, .quest-sheet .button-secondary, .quest-sheet .text-button { font-size: 14px; }
+@media (max-width: 860px) {
+  .quick-start { align-items: flex-start; flex-direction: column; }
+}
+@media (max-width: 560px) {
+  .quick-start { padding: 14px; }
+  .quest-sheet .evidence-check { grid-template-columns: 19px minmax(0, 1fr); }
+  .quest-sheet .evidence-check strong { grid-column: 2; text-align: left; max-width: none; }
+  .recent-game { align-items: flex-start; flex-direction: column; }
+  .sponsor-form input, .sponsor-form input[type="datetime-local"], .sponsor-form textarea { font-size: 16px; }
+  .quick-start .game-actions, .game-evidence .game-actions { width: 100%; }
+  .quick-start .game-actions > *, .game-evidence .game-actions > * { flex: 1 1 160px; }
+}

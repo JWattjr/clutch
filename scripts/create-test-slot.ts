@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { EASY_DESCRIPTION } from "../lib/quest-state.ts";
 import {
   CHAIN_ID, EXPLORER_URL, checkNetwork, contractAddress, ensureWriteAcknowledgement,
   integrationRecordPath, loadEnv, makeReader, makeWriter, read, writeAndWait, writeJson,
@@ -17,19 +18,18 @@ type Quest = {
   ends_at_ms: number;
 };
 
-const DESCRIPTION = "Win a rated blitz game as White in no more than 40 full moves.";
+const DESCRIPTION = EASY_DESCRIPTION;
 const EXPECTED_RULES = {
   platform: "LICHESS",
   variant: "STANDARD",
-  rated: "REQUIRED",
-  speed: "BLITZ",
-  player_color: "WHITE",
-  result: "WIN",
-  max_plies: 80,
+  rated: "FORBIDDEN",
+  speed: "ANY",
+  player_color: "ANY",
+  result: "DRAW",
 };
 const REWARD = 1;
-const WINDOW_MS = 60 * 60 * 1000;
-const START_DELAY_MS = 20 * 60 * 1000;
+const WINDOW_MS = 48 * 60 * 60 * 1000;
+const START_DELAY_MS = 30 * 60 * 1000;
 
 function sameAddress(left: string | undefined, right: string): boolean {
   return Boolean(left && left.toLowerCase() === right.toLowerCase());
@@ -111,7 +111,6 @@ async function main(): Promise<void> {
   if (active.state !== "ACTIVE") throw new Error(`Activation finalized, but ${quest.id} is not ACTIVE.`);
 
   writeJson(path, {
-    ...baseState,
     network: "studionet",
     chainId: CHAIN_ID,
     contractAddress: address,

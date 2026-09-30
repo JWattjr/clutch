@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   CHAIN_ID,
   CHAIN_ID_HEX,
@@ -20,6 +20,10 @@ import {
   type Account,
 } from "@/lib/contract";
 import { replayGame, type ReplayResult } from "@/lib/replay";
+import { isGameInput, parseGameId, SAVED_GAME } from "@/lib/lichess";
+import { demoSchedule, EASY_DESCRIPTION, localDateInput, questPhase, remainingTime, scheduleError } from "@/lib/quest-state";
+import { DialogFrame } from "./dialog-frame";
+import { EvidenceChecks, GameEvidence } from "./game-evidence";
 
 type ViewName = "explore" | "sponsor" | "proofs";
 type NetworkState = "not-configured" | "checking" | "ready" | "error";
@@ -125,9 +129,12 @@ function Icon({ name, size = 18 }: { name: "arrow" | "check" | "chess" | "close"
   return <svg {...shared}><path d="M5 20h14M7 17l2-3h6l2 3M9 14l-1-4 2-2-1-3 3-2 3 3-1 3 2 3" /><path d="m10 7 2 1 2-1" /></svg>;
 }
 
-function StatePill({ state }: { state: string }) {
-  const label = state === "ACTIVE" ? "Live quest" : state === "AWARDED" ? "Awarded" : state === "EXPIRED_REFUNDED" ? "Refunded" : state === "COMPILED" ? "Ready to confirm" : state === "DRAFT" ? "Draft" : "Preview only";
-  const tone = state === "ACTIVE" || state === "AWARDED" ? "mint" : state === "EXPIRED_REFUNDED" ? "coral" : state === "COMPILED" ? "lavender" : "muted";
+function StatePill({ state, quest }: { state: string; quest?: Quest }) {
+  const now = useClock();
+  const phase = quest ? questPhase(quest, now) : state;
+  const labels: Record<string, string> = { ACTIVE: "Active", OPEN: "Open for play", UPCOMING: "Upcoming", CLAIMS_ONLY: "Claims only", DEADLINE_PASSED: "Deadline passed", CHECKING_TIME: "Checking time…", AWARDED: "Awarded", EXPIRED_REFUNDED: "Refunded", COMPILED: "Ready to confirm", DRAFT: "Draft", PREVIEW: "Preview only" };
+  const label = labels[phase] ?? phase.replaceAll("_", " ");
+  const tone = phase === "OPEN" || phase === "AWARDED" ? "mint" : phase === "EXPIRED_REFUNDED" || phase === "DEADLINE_PASSED" ? "coral" : ["COMPILED", "UPCOMING", "CLAIMS_ONLY"].includes(phase) ? "lavender" : "muted";
   return <span className={`state-pill ${tone}`}><span className="state-dot" aria-hidden="true" />{label}</span>;
 }
 
@@ -152,7 +159,7 @@ function QuestTile({ quest, onSelect, compact = false }: { quest: Quest; onSelec
   return <button className={`quest-tile ${compact ? "compact" : ""}`} type="button" onClick={() => onSelect(quest)}>
     <span className={`tile-token ${preview ? "preview-token" : quest.state === "AWARDED" ? "won-token" : ""}`} aria-hidden="true">♞</span>
     <span className="tile-main"><span className="tile-title">{quest.id.startsWith("sample-") ? quest.id === PREVIEW_QUESTS[0].id ? "Blitz Grove" : quest.id === PREVIEW_QUESTS[1].id ? "Rapid Meadow" : "Classical Summit" : quest.description}</span><span className="tile-subtitle">{preview ? "Example · no reward" : `${quest.rules?.speed ?? "Open"} · ${demo(quest.reward)}`}</span></span>
-    <span className="tile-trailing">{preview ? <span className="mini-preview">PREVIEW</span> : <StatePill state={quest.state} />}<Icon name="arrow" size={16} /></span>
+    <span className="tile-trailing">{preview ? <span className="mini-preview">PREVIEW</span> : <StatePill state={quest.state} quest={quest} />}<Icon name="arrow" size={16} /></span>
   </button>;
 }
 
@@ -165,7 +172,7 @@ function QuestMap({
   const sampleBySpeed = new Map(PREVIEW_QUESTS.map((quest) => [quest.rules?.speed ?? "ANY", quest]));
   const mapQuests = quests.filter((quest) => ["ACTIVE", "AWARDED", "EXPIRED_REFUNDED"].includes(quest.state));
   const shown = liveReady
-    ? mapQuests.filter((quest) => selectedSpeed === "ALL" || quest.rules?.speed === selectedSpeed)
+    ? mapQuests.filter((quest) => selectedSpeed === "ALL" || (quest.rules?.speed === selectedSpeed || quest.rules?.speed === "ANY"))
     : PREVIEW_QUESTS.filter((quest) => selectedSpeed === "ALL" || quest.rules?.speed === selectedSpeed);
 
   return <section className="panel map-panel" aria-labelledby="map-title">
@@ -180,10 +187,10 @@ function QuestMap({
       {layout === "map" && <div className="map-experience">
         <div className="map-stage" role="group" aria-label="Illustrated quest map grouped by time control">
           <div className="map-canvas">
-            <Image src="/images/quest-map-world.png" alt="" fill sizes="(max-width: 560px) 840px, (max-width: 860px) 720px, (max-width: 1200px) 900px, 1100px" quality={82} loading="eager" fetchPriority="high" className="map-world-image" />
+            <Image src="/images/quest-map-world.png" alt="" fill sizes="(max-width: 560px) 840px, (max-width: 860px) 720px, (max-width: 1200px) 900px, 1100px" quality={75} loading="eager" fetchPriority="high" className="map-world-image" />
             <div className="map-destinations">
               {GROUPS.map((group) => {
-                const trailQuests = liveReady ? mapQuests.filter((item) => item.rules?.speed === group.speed) : PREVIEW_QUESTS.filter((item) => item.rules?.speed === group.speed);
+                const trailQuests = liveReady ? mapQuests.filter((item) => (item.rules?.speed === group.speed || item.rules?.speed === "ANY")) : PREVIEW_QUESTS.filter((item) => item.rules?.speed === group.speed);
                 const quest = liveReady ? trailQuests[0] : sampleBySpeed.get(group.speed);
                 const count = trailQuests.length;
                 const active = selectedSpeed === group.speed;
@@ -221,7 +228,7 @@ function ActivityPanel({ claims, loading, onSelectClaim, liveReady }: { claims: 
       <span className={`activity-mark ${claim.outcome === "VERIFIED" ? "passed" : claim.outcome === "NOT_QUALIFIED" ? "failed" : "waiting"}`}>{claim.outcome === "VERIFIED" ? <Icon name="check" size={15} /> : "·"}</span>
       <span className="activity-copy"><strong>{claim.outcome === "VERIFIED" ? "Quest cleared" : claim.outcome === "NOT_QUALIFIED" ? "Try another game" : "Evidence needs a retry"}</strong><small>{claim.game_id} · {dateTime(claim.submitted_at_ms)}</small></span>
       <span className="activity-reward">{claim.reward_demo_units ? `+${demo(claim.reward_demo_units)}` : claim.outcome}</span>
-    </button>)}</div> : <div className="empty-log"><span className="empty-icon">♙</span><p>{liveReady ? "Your recorded claims will show up here." : "A quest log appears when this board is connected."}</p><span>No XP or badges are invented for this preview.</span></div>}
+    </button>)}</div> : <div className="empty-log"><span className="empty-icon">♙</span><p>{liveReady ? "Select a quest to inspect its public claim history." : "A quest log appears when this board is connected."}</p><span>No XP or badges are invented for this preview.</span></div>}
     <div className="receipt-link-row"><span><span className="mint-dot" /> Receipts are public</span><a href="#proofs" onClick={(event) => { event.preventDefault(); document.dispatchEvent(new CustomEvent("clutch:navigate", { detail: "proofs" })); }}>Open proof shelf <Icon name="arrow" size={14} /></a></div>
   </section>;
 }
@@ -232,7 +239,7 @@ function ProofShelf({ claims, loading, onSelect }: { claims: Claim[]; loading: b
   return <div className="proof-grid">{claims.map((claim) => <button className="proof-card" type="button" key={claim.id} onClick={() => onSelect(claim)}>
     <span className={`proof-stamp ${claim.outcome === "VERIFIED" ? "mint" : claim.outcome === "NOT_QUALIFIED" ? "coral" : "yellow"}`}>{claim.outcome === "VERIFIED" ? "VERIFIED" : claim.outcome === "NOT_QUALIFIED" ? "NOT QUALIFIED" : "NEEDS EVIDENCE"}</span>
     <strong>{claim.quest_id}</strong><span>Game {claim.game_id}</span><span>{dateTime(claim.submitted_at_ms)}</span>
-    <span className="proof-card-bottom"><span>{claim.checks?.filter((check) => check.status === "PASS").length ?? 0} checks passed</span><span>{claim.reward_demo_units ? `+${demo(claim.reward_demo_units)}` : "0 reward"}</span></span>
+    <span className="proof-card-bottom"><span>{claim.outcome === "VERIFIED" ? "All award checks passed" : `${claim.checks?.filter((check) => check.status !== "PASS").length ?? 0} checks need attention`}</span><span>{claim.reward_demo_units ? `+${demo(claim.reward_demo_units)}` : "0 reward"}</span></span>
   </button>)}</div>;
 }
 
@@ -242,29 +249,33 @@ function RulesChecklist({ rules }: { rules: RuleSet }) {
 
 function QuestDetail({
   quest, preview, liveReady, wallet, chainId, link, challenge, enrollment, claims, busy, onClose, onConnect, onSwitchNetwork,
-  onRequestLink, onVerifyLink, onJoin, onSubmit, onExpire, onSelectClaim,
+  onRequestLink, onVerifyLink, onJoin, onSubmit, onExpire, onSelectClaim, detailsLoading, detailsError, onRetryDetails, toast, receipt,
 }: {
   quest: Quest; preview: boolean; liveReady: boolean; wallet?: string; chainId?: number; link: LichessLink | null;
   challenge: LinkChallenge | null; enrollment: Enrollment | null; claims: Claim[]; busy: string;
   onClose: () => void; onConnect: () => void; onSwitchNetwork: () => void;
   onRequestLink: (lichessId: string) => Promise<void>; onVerifyLink: () => Promise<void>; onJoin: () => Promise<void>;
   onSubmit: (gameId: string) => Promise<void>; onExpire: () => Promise<void>; onSelectClaim: (claim: Claim) => void;
+  detailsLoading: boolean; detailsError: string; onRetryDetails: () => void; toast: Toast | null; receipt: ReceiptProgress | null;
 }) {
   const [lichessId, setLichessId] = useState("");
-  const [gameId, setGameId] = useState("");
-  const [replayId, setReplayId] = useState("");
-  const [replayUser, setReplayUser] = useState("");
+  const [replayId, setReplayId] = useState(preview ? SAVED_GAME.id : "");
+  const [replayUser, setReplayUser] = useState(preview ? SAVED_GAME.player : "");
   const [replay, setReplay] = useState<ReplayResult | null>(null);
   const [replayBusy, setReplayBusy] = useState(false);
   const [replayError, setReplayError] = useState("");
   const [copied, setCopied] = useState(false);
-  const [replayOpen, setReplayOpen] = useState(false);
+  const [replayOpen, setReplayOpen] = useState(preview);
   const isActive = quest.state === "ACTIVE";
   const now = useClock();
+  const phase = questPhase(quest, now);
   const canJoinNow = isActive && now >= quest.starts_at_ms && now <= quest.ends_at_ms;
+  const canClaimNow = isActive && now > 0 && now <= quest.claim_deadline_ms;
   const currentLink = link?.lichess_id ? link : null;
   const recentClaim = claims.slice().sort((a, b) => (b.submitted_at_ms ?? 0) - (a.submitted_at_ms ?? 0))[0];
   const isWrongNetwork = Boolean(wallet && chainId !== CHAIN_ID);
+  const timeZone = now ? Intl.DateTimeFormat().resolvedOptions().timeZone : "your local timezone";
+  const nextMove = preview ? "Scout a saved game" : phase === "AWARDED" ? "Inspect the winning receipt" : phase === "EXPIRED_REFUNDED" ? "Choose a new quest" : phase === "DEADLINE_PASSED" ? "This quest’s claim deadline has passed" : phase === "CHECKING_TIME" ? "Checking the quest clock…" : !wallet ? "Connect your wallet when you’re ready to play" : isWrongNetwork ? "Switch to Studio Net" : !liveReady ? "Retry the board connection" : detailsLoading ? "Reading your checkpoint…" : detailsError ? "Retry your checkpoint" : !currentLink ? "Link your Lichess account" : phase === "UPCOMING" ? `Play opens in ${remainingTime(quest.starts_at_ms, now)}` : !enrollment?.enrolled ? phase === "OPEN" ? "Join before starting a game" : "You missed enrollment; choose an open quest" : phase === "CLAIMS_ONLY" ? "Submit a game you finished inside the play window" : "Finish a qualifying game, then find it here";
 
   async function copyChallenge() {
     if (!challenge?.text) return;
@@ -282,11 +293,22 @@ function QuestDetail({
     finally { setReplayBusy(false); }
   }
 
-  return <div className="sheet-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-    <section className="quest-sheet" role="dialog" aria-modal="true" aria-labelledby="quest-detail-title">
+  async function runSavedReplay() {
+    if (!quest.rules || replayBusy) return;
+    setReplayId(SAVED_GAME.id); setReplayUser(SAVED_GAME.player); setReplayOpen(true);
+    setReplay(null); setReplayError(""); setReplayBusy(true);
+    try { setReplay(await replayGame(SAVED_GAME.id, quest.rules, SAVED_GAME.player)); }
+    catch (error) { setReplayError(error instanceof Error ? error.message : String(error)); }
+    finally { setReplayBusy(false); }
+  }
+
+  return <DialogFrame titleId="quest-detail-title" onClose={onClose}>
+    <section className="quest-sheet">
       <header className="sheet-top"><span className="eyebrow">{preview ? "SAMPLE EXPEDITION" : `QUEST ${quest.id}`}</span><button className="icon-button" type="button" aria-label="Close quest details" onClick={onClose}><Icon name="close" /></button></header>
       <div className="sheet-scroll">
-        <div className="sheet-title-row"><div className="sheet-emblem" aria-hidden="true">♞</div><div className="sheet-title-copy"><StatePill state={quest.state} /><h2 id="quest-detail-title">{quest.description}</h2><p>{preview ? "Example quest · no funds reserved" : `Posted by ${compactAddress(quest.sponsor)}`}</p></div></div>
+        <div className="next-move"><h3>Your next move</h3><p>{nextMove}</p>{!preview && now > 0 && ["OPEN", "CLAIMS_ONLY"].includes(phase) && <small>{phase === "OPEN" ? `Play closes in ${remainingTime(quest.ends_at_ms, now)}` : `Claims close in ${remainingTime(quest.claim_deadline_ms, now)}`}</small>}</div>
+        {toast && <div className={`sheet-feedback ${toast.kind}`} role={toast.kind === "error" ? "alert" : "status"}><p>{toast.message}</p>{receipt && <a href={`${EXPLORER_URL}/tx/${receipt.hash}`} target="_blank" rel="noreferrer">{receipt.status} · Inspect transaction ↗</a>}</div>}
+        <div className="sheet-title-row"><div className="sheet-emblem" aria-hidden="true">♞</div><div className="sheet-title-copy"><StatePill state={quest.state} quest={quest} /><h2 id="quest-detail-title">{quest.description}</h2><p>{preview ? "Example quest · no funds reserved" : `Posted by ${compactAddress(quest.sponsor)}`}</p></div></div>
         <div className="quest-reward-card"><div><span className="eyebrow">DEMO REWARD</span><strong>{preview ? "—" : demo(quest.reward)}</strong></div><div className="reward-lock"><span className="status-square" />{preview ? "Preview only" : quest.state === "ACTIVE" ? "Reserved by sponsor" : quest.state === "AWARDED" ? "Settled once" : quest.state === "EXPIRED_REFUNDED" ? "Returned to sponsor" : "Not reserved"}</div></div>
 
         <section className="detail-block"><div className="block-title"><span className="step-number">01</span><div><span className="eyebrow">THE RULES</span><h3>What counts as a clear?</h3></div></div>
@@ -294,82 +316,104 @@ function QuestDetail({
           {!preview && quest.rule_hash && <details className="evidence-drawer"><summary>Inspect checklist hash and source policy</summary><div className="drawer-content"><span>Rule hash</span><code>{quest.rule_hash}</code><span>Source policy</span><code>lichess-standard-live/1 · rules clutch-rules/1</code></div></details>}
         </section>
 
-        <section className="detail-block timing-block"><div className="block-title"><span className="step-number">02</span><div><span className="eyebrow">PLAY WINDOW</span><h3>When the quest is open</h3></div></div><div className="timing-grid"><div><span>Opens</span><strong>{preview ? "Not scheduled" : dateTime(quest.starts_at_ms)}</strong></div><div><span>Closes</span><strong>{preview ? "Not scheduled" : dateTime(quest.ends_at_ms)}</strong></div><div><span>Claim grace</span><strong>{preview ? "—" : `${Math.round(quest.claim_grace_ms / 86_400_000)} days`}</strong></div></div><p className="fine-print">Play and join after activation. The first qualifying claim that finalizes wins this single reward.</p></section>
+        <section className="detail-block timing-block"><div className="block-title"><span className="step-number">02</span><div><span className="eyebrow">PLAY WINDOW</span><h3>When the quest is open</h3></div></div><div className="timing-grid"><div><span>Opens</span><strong>{preview ? "Not scheduled" : dateTime(quest.starts_at_ms)}</strong></div><div><span>Closes</span><strong>{preview ? "Not scheduled" : dateTime(quest.ends_at_ms)}</strong></div><div><span>Claim deadline</span><strong>{preview ? "—" : dateTime(quest.claim_deadline_ms)}</strong></div></div><p className="fine-print">Times shown in {timeZone}. Join during the play window, then start and finish your game before play closes. Submit before the separate claim deadline. The first qualifying claim recorded on-chain wins.</p></section>
 
-        {preview ? <section className="detail-block sandbox-block"><div className="block-title"><span className="step-number">↗</span><div><span className="eyebrow">HISTORICAL REPLAY</span><h3>Try a real game record</h3></div></div><div className="sandbox-banner"><span>REPLAY / SANDBOX</span><p>This checks a public historical game in your browser. It cannot join a quest or credit DEMO units.</p></div><ReplayForm replayOpen={replayOpen} onToggle={() => setReplayOpen(!replayOpen)} replayId={replayId} setReplayId={setReplayId} replayUser={replayUser} setReplayUser={setReplayUser} replay={replay} replayBusy={replayBusy} replayError={replayError} onSubmit={runReplay} /></section> : <section className="detail-block player-block"><div className="block-title"><span className="step-number">03</span><div><span className="eyebrow">PLAYER CHECKPOINT</span><h3>Link, join, then play</h3></div></div>
+        {preview ? <section className="detail-block sandbox-block"><div className="block-title"><span className="step-number">↗</span><div><span className="eyebrow">HISTORICAL REPLAY</span><h3>Try a real game record</h3></div></div><div className="sandbox-banner"><span>REPLAY / SANDBOX</span><p>This checks a public historical game in your browser. It cannot join a quest or credit DEMO units.</p></div><ReplayForm replayOpen={replayOpen} onToggle={() => setReplayOpen(!replayOpen)} replayId={replayId} setReplayId={setReplayId} replayUser={replayUser} setReplayUser={setReplayUser} replay={replay} replayBusy={replayBusy} replayError={replayError} onSubmit={runReplay} onSavedGame={() => void runSavedReplay()} /></section> : <section className="detail-block player-block"><div className="block-title"><span className="step-number">03</span><div><span className="eyebrow">PLAYER CHECKPOINT</span><h3>Link, join, then play</h3></div></div>
           {!wallet ? <div className="action-card"><p>Connect a wallet on GenLayer Studio Net to take a turn.</p><button className="button-primary" type="button" onClick={onConnect}><Icon name="wallet" size={16} /> Connect wallet</button></div>
             : isWrongNetwork ? <div className="action-card"><p>Your wallet is on chain {chainId ?? "unknown"}. Clutch reads and writes on Studio Net ({CHAIN_ID}).</p><button className="button-primary" type="button" onClick={onSwitchNetwork}>Switch to Studio Net</button></div>
               : !liveReady ? <div className="action-card"><p>Clutch can’t read the configured contract right now. On-chain actions are paused until the board is available.</p></div>
+                : ["AWARDED", "EXPIRED_REFUNDED", "DEADLINE_PASSED", "CHECKING_TIME"].includes(phase) ? <div className="action-card"><p>{nextMove}. Player submissions are closed.</p>{phase === "DEADLINE_PASSED" && <button className="button-secondary" type="button" disabled={Boolean(busy)} onClick={() => void onExpire()}>Refund expired quest</button>}</div>
+                : detailsLoading ? <p role="status">Reading enrollment and receipts…</p>
+                : detailsError ? <div className="action-card"><p role="alert">{detailsError}</p><button type="button" className="button-secondary" onClick={onRetryDetails}>Retry checkpoint</button></div>
                 : !currentLink ? <div className="action-card"><p>Link the Lichess account that will play this quest. The link is fixed to this wallet.</p>{challenge?.state === "PENDING" ? <div className="challenge-box"><span className="eyebrow">ADD THIS EXACT LINE TO YOUR PUBLIC BIO</span><code>{challenge.text}</code><div className="challenge-actions"><a href={`https://lichess.org/@/${challenge.lichess_id}`} target="_blank" rel="noreferrer">Open Lichess profile <Icon name="external" size={14} /></a><button type="button" className="text-button" onClick={() => void copyChallenge()}><Icon name="copy" size={14} /> {copied ? "Copied" : "Copy text"}</button></div><p>Leave it there until the verification transaction finalizes. Then you can remove it.</p><button className="button-secondary full-width" type="button" disabled={Boolean(busy)} onClick={() => void onVerifyLink()}>{busy || "Check profile and link"}</button></div>
                   : <form className="inline-form" onSubmit={(event) => { event.preventDefault(); void onRequestLink(lichessId); }}><label htmlFor="lichess-id">Lichess username</label><div className="input-with-prefix"><span>@</span><input id="lichess-id" value={lichessId} onChange={(event) => setLichessId(event.target.value)} minLength={3} maxLength={30} autoComplete="username" required pattern="[A-Za-z0-9_-]{3,30}" placeholder="yourname" /></div><p className="field-help">Clutch checks the public profile bio. It never asks you for a Lichess password or token.</p><button className="button-primary" type="submit" disabled={Boolean(busy) || !lichessId.trim()}>{busy || "Get a profile challenge"}</button></form>}</div>
                 : !enrollment?.enrolled && canJoinNow ? <div className="action-card"><div className="linked-row"><span className="linked-check"><Icon name="check" size={14} /></span><span><strong>@{currentLink.lichess_id}</strong><small>Linked to {compactAddress(wallet)}</small></span></div><p>Your account link is verified. Join now so a game must start after your enrollment.</p><button className="button-primary" type="button" disabled={Boolean(busy)} onClick={() => void onJoin()}>{busy || "Join this quest"}</button></div>
-                  : enrollment?.enrolled ? <div className="action-card"><div className="linked-row"><span className="linked-check"><Icon name="check" size={14} /></span><span><strong>Joined as @{enrollment.lichess_id}</strong><small>Beneficiary: {compactAddress(enrollment.wallet)}</small></span></div><p>Submit one Lichess game ID after you finish a qualifying game.</p><form className="inline-form" onSubmit={(event) => { event.preventDefault(); void onSubmit(gameId.trim()); }}><label htmlFor="game-id">Lichess game ID</label><input id="game-id" value={gameId} onChange={(event) => setGameId(event.target.value)} minLength={8} maxLength={8} pattern="[A-Za-z0-9]{8}" required placeholder="e.g. abc12345" /><p className="field-help">Only the 8-character ID is sent. Clutch constructs the fixed Lichess API URL.</p><button className="button-primary" type="submit" disabled={Boolean(busy) || gameId.trim().length !== 8}>{busy || "Check game and submit claim"}</button></form></div>
+                  : enrollment?.enrolled && canClaimNow ? <div className="action-card"><div className="linked-row"><span className="linked-check"><Icon name="check" size={14} /></span><span><strong>Joined as @{enrollment.lichess_id}</strong><small>Joined {dateTime(enrollment.enrolled_at_ms ?? 0)}</small></span></div><p>Finish a qualifying game, find it here, and check it before signing.</p><GameEvidence quest={quest} username={enrollment.lichess_id ?? currentLink.lichess_id} enrolledAt={enrollment.enrolled_at_ms ?? 0} canSubmit={canClaimNow} busy={busy} onSubmit={onSubmit} /></div>
                     : <div className="action-card"><p>{isActive && now < quest.starts_at_ms ? `This quest opens ${dateTime(quest.starts_at_ms)}. You can join when the play window begins.` : isActive && now > quest.ends_at_ms ? "The play window has closed. Players who enrolled in time can still submit through the claim grace period." : `This quest is ${quest.state.toLowerCase().replaceAll("_", " ")}. Player actions are closed.`}</p>{quest.state === "ACTIVE" && now > quest.claim_deadline_ms && <button className="button-secondary" type="button" disabled={Boolean(busy)} onClick={() => void onExpire()}>{busy || "Refund expired quest"}</button>}</div>}
         </section>}
 
-        {recentClaim && <section className="detail-block claim-block"><div className="block-title"><span className="step-number">04</span><div><span className="eyebrow">LATEST CLAIM RECEIPT</span><h3>{recentClaim.outcome === "VERIFIED" ? "Quest cleared!" : recentClaim.outcome === "NOT_QUALIFIED" ? "This game missed a rule" : "Some evidence is missing"}</h3></div></div><p className="claim-intro">Game <a href={`https://lichess.org/${recentClaim.game_id}`} target="_blank" rel="noreferrer">{recentClaim.game_id} <Icon name="external" size={13} /></a> · {recentClaim.reward_demo_units ? `+${demo(recentClaim.reward_demo_units)}` : "no reward credited"}</p><div className="evidence-checks">{recentClaim.checks.map((check, index) => <div className="evidence-check" key={`${check.condition}-${index}`}><span className={`check-status ${check.status === "PASS" ? "pass" : check.status === "FAIL" ? "fail" : "missing"}`}>{check.status === "PASS" ? <Icon name="check" size={12} /> : check.status === "FAIL" ? "!" : "?"}</span><span>{check.condition}</span><strong>{check.status === "PASS" ? "Passed" : check.status === "FAIL" ? "Did not match" : "Not available"}</strong></div>)}</div><details className="evidence-drawer"><summary>Inspect public evidence hash and claim ID</summary><div className="drawer-content"><span>Claim ID</span><code>{recentClaim.id}</code><span>Evidence hash</span><code>{recentClaim.evidence_hash}</code></div></details><button type="button" className="text-button open-receipt" onClick={() => onSelectClaim(recentClaim)}>Open full receipt <Icon name="arrow" size={14} /></button></section>}
+        {recentClaim && <section className="detail-block claim-block"><div className="block-title"><span className="step-number">04</span><div><span className="eyebrow">LATEST CLAIM RECEIPT</span><h3>{recentClaim.outcome === "VERIFIED" ? "Quest cleared!" : recentClaim.outcome === "NOT_QUALIFIED" ? "This game missed a rule" : "Some evidence is missing"}</h3></div></div><p className="claim-intro">Game <a href={`https://lichess.org/${recentClaim.game_id}`} target="_blank" rel="noreferrer">{recentClaim.game_id} <Icon name="external" size={13} /></a> · {recentClaim.reward_demo_units ? `+${demo(recentClaim.reward_demo_units)}` : "no reward credited"}</p><EvidenceChecks checks={recentClaim.checks} /><p className="field-help">{recentClaim.outcome === "VERIFIED" ? "The single quest reward was settled." : recentClaim.outcome === "NOT_QUALIFIED" ? "These conditions did not match. If claims are still open, select another qualifying game." : "Validators could not obtain enough evidence. Inspect the receipt and retry while claims remain open."}</p><details className="evidence-drawer"><summary>Inspect public evidence hash and claim ID</summary><div className="drawer-content"><span>Claim ID</span><code>{recentClaim.id}</code><span>Evidence hash</span><code>{recentClaim.evidence_hash}</code></div></details><button type="button" className="text-button open-receipt" onClick={() => onSelectClaim(recentClaim)}>Open full receipt <Icon name="arrow" size={14} /></button></section>}
 
-        <section className="detail-block sandbox-block live-replay-block"><button className="replay-toggle" type="button" aria-expanded={replayOpen} onClick={() => setReplayOpen(!replayOpen)}><span><span className="eyebrow">SANDBOX · NO REWARD</span><strong>Replay a historical game</strong><small>Review rule checks without touching this live quest.</small></span><span className="toggle-plus">{replayOpen ? "−" : "+"}</span></button>{replayOpen && <ReplayForm replayOpen replayId={replayId} setReplayId={setReplayId} replayUser={replayUser} setReplayUser={setReplayUser} replay={replay} replayBusy={replayBusy} replayError={replayError} onSubmit={runReplay} />}</section>
+        {!preview && quest.rules && <section className="detail-block sandbox-block live-replay-block"><button className="replay-toggle" type="button" aria-expanded={replayOpen} onClick={() => setReplayOpen(!replayOpen)}><span><strong>Replay a historical game</strong><small>Sandbox · no reward. Review rules without touching this quest.</small></span><span className="toggle-plus">{replayOpen ? "−" : "+"}</span></button>{replayOpen && <ReplayForm replayOpen replayId={replayId} setReplayId={setReplayId} replayUser={replayUser} setReplayUser={setReplayUser} replay={replay} replayBusy={replayBusy} replayError={replayError} onSubmit={runReplay} onSavedGame={() => void runSavedReplay()} />}</section>}
 
         <div className="sheet-footnote"><span className="mint-dot" /> Validators agree on the public Lichess record; Lichess remains the source of that data.</div>
       </div>
     </section>
-  </div>;
+  </DialogFrame>;
 }
 
-function ReplayForm({ replayOpen, onToggle, replayId, setReplayId, replayUser, setReplayUser, replay, replayBusy, replayError, onSubmit }: {
+function ReplayForm({ replayOpen, onToggle, replayId, setReplayId, replayUser, setReplayUser, replay, replayBusy, replayError, onSubmit, onSavedGame }: {
   replayOpen: boolean; onToggle?: () => void; replayId: string; setReplayId: (value: string) => void; replayUser: string; setReplayUser: (value: string) => void;
   replay: ReplayResult | null; replayBusy: boolean; replayError: string; onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  onSavedGame: () => void;
 }) {
   return <div className="replay-area">
+    <button type="button" className="button-secondary full-width" disabled={replayBusy} onClick={onSavedGame}>Replay Wattxbt’s saved game</button>
+    <p className="field-help">A real historical game. It can show passing and failed rules, depending on this quest. It never earns a reward.</p>
     {onToggle && <button type="button" className="text-button replay-disclosure" aria-expanded={replayOpen} onClick={onToggle}>Historical games cannot claim a live reward {replayOpen ? "−" : "+"}</button>}
-    {replayOpen && <><form className="inline-form replay-form" onSubmit={onSubmit}><label htmlFor="historical-game-id">Game ID</label><input id="historical-game-id" value={replayId} onChange={(event) => setReplayId(event.target.value)} required minLength={8} maxLength={8} pattern="[A-Za-z0-9]{8}" placeholder="8-character Lichess ID" /><label htmlFor="historical-player-id">Player account to check</label><input id="historical-player-id" value={replayUser} onChange={(event) => setReplayUser(event.target.value)} required minLength={3} maxLength={30} pattern="[A-Za-z0-9_-]{3,30}" placeholder="Lichess username" /><button className="button-secondary" type="submit" disabled={replayBusy || replayId.length !== 8 || !replayUser.trim()}>{replayBusy ? "Reading Lichess…" : "Replay game"}</button></form>
-      {replayError && <p className="inline-error" role="alert">{replayError}</p>}{replay && <div className="replay-result" role="status"><div className="replay-result-heading"><span className={`replay-result-badge ${replay.status.toLowerCase()}`}>{replay.status === "MATCHES_RULES" ? "RULES MATCH" : replay.status === "DOES_NOT_MATCH" ? "RULES DIFFER" : "NEEDS EVIDENCE"}</span><span>GAME {replay.gameId}</span></div><div className="evidence-checks">{replay.checks.map((check, index) => <div className="evidence-check" key={`${check.condition}-${index}`}><span className={`check-status ${check.status === "PASS" ? "pass" : check.status === "FAIL" ? "fail" : "missing"}`}>{check.status === "PASS" ? <Icon name="check" size={12} /> : check.status === "FAIL" ? "!" : "?"}</span><span>{check.condition}</span><strong>{check.status === "PASS" ? "Passed" : check.status === "FAIL" ? "Missed" : "Replay only"}</strong></div>)}</div><p className="field-help">{replay.note}</p></div>}</>}
+    {replayOpen && <><form className="inline-form replay-form" onSubmit={onSubmit}><label htmlFor="historical-game-id">Game link or ID</label><input id="historical-game-id" value={replayId} onChange={(event) => setReplayId(event.target.value)} required maxLength={200} readOnly={replayBusy} placeholder="Paste a Lichess link or game ID" /><label htmlFor="historical-player-id">Player account to check</label><input id="historical-player-id" value={replayUser} onChange={(event) => setReplayUser(event.target.value)} readOnly={replayBusy} required minLength={3} maxLength={30} pattern="[A-Za-z0-9_-]{3,30}" placeholder="Lichess username" /><button className="button-secondary" type="submit" disabled={replayBusy || !isGameInput(replayId) || !replayUser.trim()}>{replayBusy ? "Reading Lichess…" : "Replay game"}</button></form>
+      {replayError && <p className="inline-error" role="alert">{replayError}</p>}{replay && <div className="replay-result" role="status"><div className="replay-result-heading"><span className={`replay-result-badge ${replay.status.toLowerCase()}`}>{replay.status === "MATCHES_RULES" ? "RULES MATCH" : replay.status === "DOES_NOT_MATCH" ? "RULES DIFFER" : "NEEDS EVIDENCE"}</span><span>GAME {replay.gameId}</span></div><EvidenceChecks checks={replay.checks} /><p className="field-help">{replay.note}</p></div>}</>}
   </div>;
 }
 
 function SponsorDesk({
-  wallet, account, quests, busy, canWrite, blockMessage, onCreate, onCompile, onActivate, onSelect,
+  wallet, account, quests, busy, canWrite, blockMessage, onCreate, onCompile, onActivate, onSelect, onConnect,
 }: {
   wallet?: string; account: Account | null; quests: Quest[]; busy: string; canWrite: boolean; blockMessage: string;
   onCreate: (data: { description: string; reward: number; starts: number; ends: number }) => Promise<void>;
   onCompile: (quest: Quest) => Promise<void>; onActivate: (quest: Quest) => Promise<void>; onSelect: (quest: Quest) => void;
+  onConnect: () => void;
 }) {
   const [description, setDescription] = useState("");
   const [reward, setReward] = useState("25");
   const [starts, setStarts] = useState("");
   const [ends, setEnds] = useState("");
+  const [formError, setFormError] = useState("");
+  const [timeZone, setTimeZone] = useState("your local timezone");
+  const now = useClock();
+  useEffect(() => { const timer = window.setTimeout(() => setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone), 0); return () => window.clearTimeout(timer); }, []);
   const [approved, setApproved] = useState<Record<string, boolean>>({});
   const drafts = quests.filter((quest) => quest.sponsor?.toLowerCase() === wallet?.toLowerCase() && ["DRAFT", "COMPILED"].includes(quest.state)).sort((a, b) => b.created_at_ms - a.created_at_ms);
 
   async function createDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const startTime = new Date(starts).getTime(); const endTime = new Date(ends).getTime();
-    if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) return;
+    const error = scheduleError(startTime, endTime, Date.now());
+    setFormError(error);
+    if (error) return;
     await onCreate({ description: description.trim(), reward: Number.parseInt(reward, 10), starts: startTime, ends: endTime });
+  }
+
+  function applyPreset(hours: number) {
+    const schedule = demoSchedule(hours);
+    setDescription(EASY_DESCRIPTION); setReward("1"); setStarts(localDateInput(schedule.starts)); setEnds(localDateInput(schedule.ends)); setFormError("");
   }
 
   return <div className="sponsor-layout">
     <section className="panel sponsor-intro"><span className="eyebrow">SPONSOR DESK · QUEST MAKER</span><h1>Set the challenge.<br /><em>Let the board decide.</em></h1><p>Write one chess condition in everyday language. Validators independently compile it into a small checklist, then you approve the exact rules before any DEMO units are reserved.</p><div className="sponsor-flow"><span><b>1</b> Describe</span><i>→</i><span><b>2</b> Compile</span><i>→</i><span><b>3</b> Confirm &amp; post</span></div></section>
     <div className="sponsor-columns"><section className="panel sponsor-form-panel"><div className="panel-heading"><div><span className="eyebrow">NEW EXPEDITION</span><h2>Write a chess quest</h2></div><span className="demo-coin">◆ DEMO</span></div>
-      {!canWrite ? <div className="sponsor-wallet-note"><span className="wallet-illustration"><Icon name={wallet ? "spark" : "wallet"} size={23} /></span><strong>{wallet ? "Sponsor actions are paused" : "Connect your wallet to sponsor"}</strong><p>{blockMessage || "You can still review public quests and receipts without one."}</p></div> : <><form className="sponsor-form" onSubmit={createDraft}>
+      <div className="demo-preset"><h3>Make the demo easy</h3><p>A casual standard draw, either color, any time control, no move limit. 1 DEMO. Starts in 30 minutes to allow compilation and activation.</p><div className="game-actions"><button type="button" className="button-secondary" disabled={Boolean(busy)} onClick={() => applyPreset(24)}>Use 24-hour preset</button><button type="button" className="button-secondary" disabled={Boolean(busy)} onClick={() => applyPreset(48)}>Use 48-hour preset</button></div><small>Two human players. Join before playing. No Lichess bots.</small></div>
+      {!canWrite && <div className="sponsor-wallet-note"><span className="wallet-illustration"><Icon name={wallet ? "spark" : "wallet"} size={23} /></span><strong>{wallet ? "Sponsor actions are paused" : "Connect your wallet to sponsor"}</strong><p>{blockMessage || "You can still review public quests and receipts without one."}</p>{!wallet && <button type="button" className="button-primary" onClick={onConnect}>Connect wallet</button>}</div>}<form className="sponsor-form" onSubmit={createDraft}>
         <label htmlFor="quest-prompt">Challenge description</label><textarea id="quest-prompt" value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1000} minLength={8} required placeholder="Win a rated blitz game as Black in no more than 40 full moves." /><div className="field-under"><span>Try: win/draw · rated · blitz/rapid/classical · color · move limit</span><span>{description.length}/1000</span></div>
         <div className="form-grid"><div><label htmlFor="quest-reward">Reward units</label><div className="unit-input"><input id="quest-reward" type="number" min={1} max={1000} step={1} value={reward} onChange={(event) => setReward(event.target.value)} required /><span>DEMO</span></div><small>Up to 1,000 DEMO · no cash value</small></div><div className="available-balance"><span>YOUR AVAILABLE</span><strong>{account ? demo(account.sponsor_available) : "—"}</strong></div></div>
         <div className="form-grid time-grid"><div><label htmlFor="quest-start">Play opens</label><input id="quest-start" type="datetime-local" value={starts} onChange={(event) => setStarts(event.target.value)} required /><small>At least one hour of play time.</small></div><div><label htmlFor="quest-end">Play closes</label><input id="quest-end" type="datetime-local" value={ends} onChange={(event) => setEnds(event.target.value)} required /><small>Claims stay open for 7 days after.</small></div></div>
         <div className="form-note"><Icon name="spark" size={16} /><p>Clutch supports conjunctions only. Move limits in full moves become half-moves in the checklist (40 full moves = 80 half-moves).</p></div>
-        <button className="button-primary sponsor-submit" type="submit" disabled={Boolean(busy) || !wallet || !description.trim() || !reward || !starts || !ends}>{busy || "Create unfunded draft"}<Icon name="arrow" size={17} /></button>
-      </form><div className="sponsor-policy"><span><span className="mint-dot" /> No tokens accepted</span><span><span className="lavender-dot" /> Reward reserved only after you confirm</span></div></>}
+        <p className="field-help">All dates use {timeZone}. Create, compile and activate before play opens. Joining becomes available when the window opens.</p>
+        {formError && <p className="inline-error" role="alert">{formError}</p>}
+        <button className="button-primary sponsor-submit" type="submit" disabled={Boolean(busy) || !canWrite || !wallet || !description.trim() || !reward || !starts || !ends}>{busy || "Create unfunded draft"}<Icon name="arrow" size={17} /></button>
+      </form><div className="sponsor-policy"><span><span className="mint-dot" /> No tokens accepted</span><span><span className="lavender-dot" /> Reward reserved only after you confirm</span></div>
     </section>
     <section className="panel sponsor-drafts"><div className="panel-heading"><div><span className="eyebrow">YOUR OUTPOST</span><h2>Drafts &amp; posted quests</h2></div><span className="count-note">{drafts.length} drafts</span></div>
-      {drafts.length ? <div className="draft-list">{drafts.map((quest) => <article className="draft-card" key={quest.id}><button className="draft-title" type="button" onClick={() => onSelect(quest)}><span><span className="eyebrow">{quest.id}</span><strong>{quest.description}</strong></span><StatePill state={quest.state} /></button><div className="draft-meta"><span>{demo(quest.reward)}</span><span>opens {dateTime(quest.starts_at_ms)}</span><span>closes {dateTime(quest.ends_at_ms)}</span></div>
-        {quest.state === "DRAFT" ? <button className="button-primary full-width" type="button" disabled={Boolean(busy)} onClick={() => void onCompile(quest)}>{busy || "Ask validators to compile"}</button> : <><div className="compiled-box"><span className="eyebrow">VALIDATOR CHECKLIST</span>{quest.rules ? <RulesChecklist rules={quest.rules} /> : <p>{quest.reason_codes?.map((code) => REASON_LABELS[code] ?? code).join(" · ")}</p>}{quest.rule_hash && <details className="evidence-drawer"><summary>Review exact rule hash</summary><div className="drawer-content"><code>{quest.rule_hash}</code></div></details>}</div>{quest.compile_status === "COMPILED" && <><label className="confirm-check"><input type="checkbox" checked={Boolean(approved[quest.id])} onChange={(event) => setApproved((current) => ({ ...current, [quest.id]: event.target.checked }))} /><span>I checked these rules, reward and schedule. Reserve {demo(quest.reward)} under this hash.</span></label><button className="button-primary full-width" type="button" disabled={Boolean(busy) || !approved[quest.id]} onClick={() => void onActivate(quest)}>{busy || "Confirm rules & activate"}</button></>}</>}
+      {drafts.length ? <div className="draft-list">{drafts.map((quest) => <article className="draft-card" key={quest.id}><button className="draft-title" type="button" onClick={() => onSelect(quest)}><span><span className="eyebrow">{quest.id}</span><strong>{quest.description}</strong></span><StatePill state={quest.state} quest={quest} /></button><div className="draft-meta"><span>{demo(quest.reward)}</span><span>opens {dateTime(quest.starts_at_ms)}</span><span>closes {dateTime(quest.ends_at_ms)}</span></div>
+        {now > quest.starts_at_ms && <p className="inline-error">The scheduled start has passed. Create a new draft with a future start before activating.</p>}
+        {quest.state === "DRAFT" ? <button className="button-primary full-width" type="button" disabled={Boolean(busy) || now > quest.starts_at_ms} onClick={() => void onCompile(quest)}>{busy || "Ask validators to compile"}</button> : <><div className="compiled-box"><span className="eyebrow">VALIDATOR CHECKLIST</span>{quest.rules ? <RulesChecklist rules={quest.rules} /> : <p>{quest.reason_codes?.map((code) => REASON_LABELS[code] ?? code).join(" · ")}</p>}{quest.rule_hash && <details className="evidence-drawer"><summary>Review exact rule hash</summary><div className="drawer-content"><code>{quest.rule_hash}</code></div></details>}</div>{quest.compile_status === "COMPILED" && <><label className="confirm-check"><input type="checkbox" checked={Boolean(approved[quest.id])} onChange={(event) => setApproved((current) => ({ ...current, [quest.id]: event.target.checked }))} /><span>I checked these rules, reward and schedule. Reserve {demo(quest.reward)} under this hash.</span></label><button className="button-primary full-width" type="button" disabled={Boolean(busy) || !approved[quest.id] || now > quest.starts_at_ms} onClick={() => void onActivate(quest)}>{busy || "Confirm rules & activate"}</button></>}</>}
       </article>)}</div> : <div className="draft-empty"><div className="empty-icon">♜</div><strong>Your first quest starts here</strong><p>Create a draft above. It won’t reserve a reward until you approve the compiled checklist in a separate transaction.</p></div>}
     </section></div>
   </div>;
 }
 
 function ReceiptDetail({ claim, onClose }: { claim: Claim; onClose: () => void }) {
-  return <div className="sheet-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="quest-sheet receipt-sheet" role="dialog" aria-modal="true" aria-labelledby="receipt-title"><header className="sheet-top"><span className="eyebrow">PUBLIC PROOF RECEIPT</span><button className="icon-button" type="button" aria-label="Close receipt" onClick={onClose}><Icon name="close" /></button></header><div className="sheet-scroll"><span className={`proof-stamp large ${claim.outcome === "VERIFIED" ? "mint" : claim.outcome === "NOT_QUALIFIED" ? "coral" : "yellow"}`}>{claim.outcome.replaceAll("_", " ")}</span><h2 className="receipt-title" id="receipt-title">{claim.quest_id}</h2><p className="claim-intro">Game <a href={`https://lichess.org/${claim.game_id}`} target="_blank" rel="noreferrer">{claim.game_id} <Icon name="external" size={13} /></a> · submitted {dateTime(claim.submitted_at_ms)}</p><div className="evidence-checks full-checks">{claim.checks.map((check, index) => <div className="evidence-check" key={`${check.condition}-${index}`}><span className={`check-status ${check.status === "PASS" ? "pass" : check.status === "FAIL" ? "fail" : "missing"}`}>{check.status === "PASS" ? <Icon name="check" size={12} /> : check.status === "FAIL" ? "!" : "?"}</span><span>{check.condition}</span><strong>{check.status.replaceAll("_", " ")}</strong></div>)}</div><details className="evidence-drawer" open><summary>Receipt and evidence hashes</summary><div className="drawer-content"><span>Claim ID</span><code>{claim.id}</code><span>Wallet</span><code>{claim.claimant}</code><span>Lichess account</span><code>{claim.lichess_id}</code><span>Evidence SHA-256</span><code>{claim.evidence_hash}</code><span>Settled DEMO</span><code>{demo(claim.reward_demo_units)}</code></div></details><details className="evidence-drawer"><summary>Normalized public source record</summary><pre className="source-record">{JSON.stringify(claim.evidence, null, 2)}</pre></details><p className="source-caveat">Validator agreement confirms the normalized response agreed at claim time. Lichess remains the source of that response.</p></div></section></div>;
+  return <DialogFrame titleId="receipt-title" onClose={onClose}><section className="quest-sheet receipt-sheet"><header className="sheet-top"><span className="eyebrow">PUBLIC PROOF RECEIPT</span><button className="icon-button" type="button" aria-label="Close receipt" onClick={onClose}><Icon name="close" /></button></header><div className="sheet-scroll"><span className={`proof-stamp large ${claim.outcome === "VERIFIED" ? "mint" : claim.outcome === "NOT_QUALIFIED" ? "coral" : "yellow"}`}>{claim.outcome.replaceAll("_", " ")}</span><h2 className="receipt-title" id="receipt-title">{claim.quest_id}</h2><p className="claim-intro">Game <a href={`https://lichess.org/${claim.game_id}`} target="_blank" rel="noreferrer">{claim.game_id} <Icon name="external" size={13} /></a> · submitted {dateTime(claim.submitted_at_ms)}</p><p className="receipt-summary">{claim.outcome === "VERIFIED" ? `${demo(claim.reward_demo_units)} awarded. All conditions matched.` : claim.outcome === "NOT_QUALIFIED" ? `${claim.checks.filter((check) => check.status === "FAIL").length} conditions did not match. No reward was credited.` : "Evidence was incomplete. No reward was credited; inspect the missing checks."}</p><EvidenceChecks checks={claim.checks} /><details className="evidence-drawer" open><summary>Receipt and evidence hashes</summary><div className="drawer-content"><span>Claim ID</span><code>{claim.id}</code><span>Wallet</span><code>{claim.claimant}</code><span>Lichess account</span><code>{claim.lichess_id}</code><span>Evidence SHA-256</span><code>{claim.evidence_hash}</code><span>Settled DEMO</span><code>{demo(claim.reward_demo_units)}</code></div></details><details className="evidence-drawer"><summary>Normalized public source record</summary><pre className="source-record">{JSON.stringify(claim.evidence, null, 2)}</pre></details><p className="source-caveat">Validator agreement confirms the normalized response agreed at claim time. Lichess remains the source of that response.</p></div></section></DialogFrame>;
 }
 
 export function ClutchApp() {
@@ -389,6 +433,9 @@ export function ClutchApp() {
   const [allProofs, setAllProofs] = useState<Claim[]>([]);
   const [proofsLoading, setProofsLoading] = useState(false);
   const [claimsLoading, setClaimsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState("");
+  const detailRequest = useRef(0);
+  const transactionLock = useRef(false);
   const [selected, setSelected] = useState<Quest | null>(null);
   const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
   const [speed, setSpeed] = useState("ALL");
@@ -453,19 +500,21 @@ export function ClutchApp() {
   }, [configured, network]);
 
   const loadQuestDetails = useCallback(async (questId?: string) => {
-    if (!configured || network !== "ready" || !questId || questId.startsWith("sample-") || !wallet) return;
+    const request = ++detailRequest.current;
+    if (!configured || network !== "ready" || !questId || questId.startsWith("sample-")) return;
     await Promise.resolve();
-    setClaimsLoading(true);
+    setClaimsLoading(true); setDetailsError("");
     try {
       const [joined, receipts] = await Promise.all([
-        readContract<Enrollment>("get_enrollment", [questId, wallet]),
+        wallet ? readContract<Enrollment>("get_enrollment", [questId, wallet]) : Promise.resolve(null),
         readContract<Claim[]>("list_claims", [questId, 0, 50]),
       ]);
+      if (request !== detailRequest.current) return;
       setEnrollment(joined?.enrolled ? joined : null);
       const claimList = Array.isArray(receipts) ? receipts : [];
       setClaims(claimList);
-    } catch { setEnrollment(null); setClaims([]); }
-    finally { setClaimsLoading(false); }
+    } catch { if (request === detailRequest.current) setDetailsError("Couldn’t read enrollment and receipts. Retry before taking a quest action."); }
+    finally { if (request === detailRequest.current) setClaimsLoading(false); }
   }, [configured, network, wallet]);
 
   useEffect(() => {
@@ -534,9 +583,12 @@ export function ClutchApp() {
   }
 
   function selectQuest(quest: Quest) {
+    detailRequest.current++;
     setSelected(quest);
     setEnrollment(null);
     setClaims([]);
+    setDetailsError(""); setClaimsLoading(!quest.id.startsWith("sample-"));
+    setToast(null); setLastReceipt(null);
   }
 
   async function switchNetwork() {
@@ -553,19 +605,21 @@ export function ClutchApp() {
   }
 
   async function transact(method: string, args: unknown[], label: string): Promise<ReceiptProgress | null> {
+    if (transactionLock.current) return null;
     if (!configured) { setToast({ kind: "error", message: "Set NEXT_PUBLIC_CONTRACT_ADDRESS to a deployed Clutch contract first." }); return null; }
     if (!window.ethereum || !wallet) { setToast({ kind: "error", message: "Connect a wallet before signing this action." }); return null; }
     if (chainId !== CHAIN_ID) { setToast({ kind: "error", message: `Switch your wallet to Studio Net (${CHAIN_ID}) first.` }); return null; }
-    setBusy(label); setToast({ kind: "info", message: `${label} · waiting for finality` }); setLastReceipt(null);
+    transactionLock.current = true;
+    setBusy(label); setToast({ kind: "info", message: `${label} · approve in your wallet` }); setLastReceipt(null);
     try {
-      const progress = await writeContract(window.ethereum, wallet, method, args, (hash) => setLastReceipt({ hash, status: "PENDING", execution: "WAITING", consensus: "WAITING" }));
+      const progress = await writeContract(window.ethereum, wallet, method, args, (hash) => { setLastReceipt({ hash, status: "PENDING", execution: "WAITING", consensus: "WAITING" }); setToast({ kind: "info", message: `${label} · submitted; waiting for validator consensus and finality` }); });
       setLastReceipt(progress); setToast({ kind: "success", message: `${label} · finalized, execution returned, majority agreed` });
       await reload();
       return progress;
     } catch (error) {
       setToast({ kind: "error", message: error instanceof Error ? error.message : String(error) });
       return null;
-    } finally { setBusy(""); }
+    } finally { transactionLock.current = false; setBusy(""); }
   }
 
   async function claimStarter() {
@@ -580,7 +634,7 @@ export function ClutchApp() {
     if (!progress) return;
     const list = await reload();
     const created = list.find((quest) => quest.sponsor?.toLowerCase() === wallet?.toLowerCase() && quest.description === data.description && quest.state === "DRAFT");
-    if (created) { selectQuest(created); setToast({ kind: "success", message: `Draft ${created.id} created. Ask validators to compile it next.` }); }
+    if (created) { setView("sponsor"); setToast({ kind: "success", message: `Draft ${created.id} created. Compile it below, review the exact rules, then activate before play opens.` }); }
   }
 
   async function compileDraft(quest: Quest) {
@@ -622,8 +676,13 @@ export function ClutchApp() {
 
   async function submitGame(gameId: string) {
     if (!currentQuest) return;
-    const result = await transact("submit_game", [currentQuest.id, gameId], "Check game evidence");
-    if (result) await loadQuestDetails(currentQuest.id);
+    const result = await transact("submit_game", [currentQuest.id, parseGameId(gameId)], "Verify game evidence");
+    if (result) {
+      await loadQuestDetails(currentQuest.id);
+      const receipts = await readContract<Claim[]>("list_claims", [currentQuest.id, 0, 50]).catch(() => null);
+      const claim = receipts?.filter((item) => item.game_id === gameId && item.claimant.toLowerCase() === wallet?.toLowerCase()).sort((a, b) => b.submitted_at_ms - a.submitted_at_ms)[0];
+      if (claim) setToast({ kind: claim.outcome === "VERIFIED" ? "success" : claim.outcome === "NOT_QUALIFIED" ? "error" : "info", message: claim.outcome === "VERIFIED" ? `Quest cleared! ${demo(claim.reward_demo_units)} awarded.` : claim.outcome === "NOT_QUALIFIED" ? "Game verified, but quest conditions did not match. No reward awarded; inspect the failed checks below." : "The receipt needs more evidence. No reward awarded; inspect the missing checks below." });
+    }
   }
 
   async function expireQuest() {
@@ -651,7 +710,7 @@ export function ClutchApp() {
               : currentQuest?.state === "ACTIVE" && !enrollment?.enrolled ? `@${link.lichess_id} is linked. Join the quest before the game starts and you’re set.`
                 : "Nice and tidy. Rules first, then a fresh game, then the public receipt.";
 
-  const personalClaims = claims;
+  const personalClaims = wallet ? claims.filter((claim) => claim.claimant.toLowerCase() === wallet.toLowerCase()) : claims;
   const hasLiveBoard = network === "ready";
 
   return <main className="app-shell">
@@ -666,16 +725,16 @@ export function ClutchApp() {
 
     <nav className="mobile-nav" aria-label="Main navigation"><button type="button" className={view === "explore" ? "active" : ""} aria-current={view === "explore" ? "page" : undefined} onClick={() => setView("explore")}><Icon name="map" size={18} />Map</button><button type="button" className={view === "sponsor" ? "active" : ""} aria-current={view === "sponsor" ? "page" : undefined} onClick={() => setView("sponsor")}><Icon name="plus" size={18} />Sponsor</button><button type="button" className={view === "proofs" ? "active" : ""} aria-current={view === "proofs" ? "page" : undefined} onClick={() => { setView("proofs"); void reloadProofs(); }}><Icon name="chess" size={18} />Proofs</button></nav>
 
-    {view === "explore" && <div className="main-grid"><div className="primary-column"><QuestMap quests={allVisibleQuests} selectedSpeed={speed} onChooseSpeed={setSpeed} onSelect={selectQuest} layout={layout} onLayout={setLayout} liveReady={hasLiveBoard} />
-      <section className="camp-section"><div className="section-head"><div><h2>On your board</h2></div><button type="button" className="small-action" onClick={() => setView("sponsor")}><Icon name="plus" size={16} /> New expedition</button></div><div className="camp-grid">{(quests.filter((quest) => ["ACTIVE", "AWARDED", "EXPIRED_REFUNDED"].includes(quest.state)).slice(0, 2)).map((quest) => <QuestTile key={quest.id} quest={quest} compact onSelect={selectQuest} />)}{!hasLiveBoard && PREVIEW_QUESTS.slice(0, 2).map((quest) => <QuestTile key={quest.id} quest={quest} compact onSelect={selectQuest} />)}<button type="button" className="new-expedition-card" onClick={() => setView("sponsor")}><span className="new-plus"><Icon name="plus" size={27} /></span><strong>Post a quest</strong><span>Set conditions and a DEMO reward</span></button></div></section>
+    {view === "explore" && <div className="main-grid"><div className="primary-column"><section className="panel quick-start"><div><h2>Scout the rules before you play</h2><p>Replay a saved game with no wallet, or set up an easy draw quest for a live award.</p></div><div className="game-actions"><button type="button" className="button-secondary" onClick={() => selectQuest(PREVIEW_QUESTS[0])}>Try a saved game</button><button type="button" className="button-primary" onClick={() => setView("sponsor")}>Set up the demo</button></div></section><QuestMap quests={allVisibleQuests} selectedSpeed={speed} onChooseSpeed={setSpeed} onSelect={selectQuest} layout={layout} onLayout={setLayout} liveReady={hasLiveBoard} />
+      <section className="camp-section"><div className="section-head"><div><h2>Public quests</h2></div><button type="button" className="small-action" onClick={() => setView("sponsor")}><Icon name="plus" size={16} /> New expedition</button></div><div className="camp-grid">{(quests.filter((quest) => ["ACTIVE", "AWARDED", "EXPIRED_REFUNDED"].includes(quest.state)).slice(0, 2)).map((quest) => <QuestTile key={quest.id} quest={quest} compact onSelect={selectQuest} />)}{!hasLiveBoard && PREVIEW_QUESTS.slice(0, 2).map((quest) => <QuestTile key={quest.id} quest={quest} compact onSelect={selectQuest} />)}<button type="button" className="new-expedition-card" onClick={() => setView("sponsor")}><span className="new-plus"><Icon name="plus" size={27} /></span><strong>Post a quest</strong><span>Set conditions and a DEMO reward</span></button></div></section>
     </div><aside className="right-rail"><CompanionCard message={companionMessage} status={network} /><section className="panel account-panel"><div className="account-panel-heading"><div><span className="eyebrow">PLAYER STATUS</span><h2>Your camp</h2></div><span className={`account-presence ${wallet ? "present" : ""}`} title={wallet ? "Wallet connected" : "Wallet not connected"} /></div><div className="account-lines"><div><span>Wallet</span><strong>{wallet ? compactAddress(wallet) : "Not connected"}</strong></div><div><span>Lichess link</span><strong>{link?.lichess_id ? `@${link.lichess_id}` : "Not linked"}</strong></div><div><span>Available DEMO</span><strong>{account ? demo(account.sponsor_available) : "—"}</strong></div><div><span>Awarded DEMO</span><strong className="reward-text">{account ? demo(account.awarded) : "—"}</strong></div></div>{wallet && chainId === CHAIN_ID && hasLiveBoard && !account?.starter_claimed && <button className="text-button claim-starter" type="button" onClick={() => void claimStarter()}>Claim your one-time starter allocation <Icon name="arrow" size={14} /></button>}<p className="account-disclaimer">Demo accounting only. Units have no cash value and can’t be withdrawn.</p></section><ActivityPanel claims={personalClaims} loading={claimsLoading} onSelectClaim={setSelectedClaim} liveReady={hasLiveBoard} /><div className="side-footnote"><span>♙</span><p>No tokens move through Clutch. Your wallet signs demo-state changes on Studio Net.</p></div></aside></div>}
 
-    {view === "sponsor" && <SponsorDesk wallet={wallet} account={account} quests={quests} busy={busy} canWrite={hasLiveBoard && Boolean(wallet) && chainId === CHAIN_ID} blockMessage={!wallet ? "Connect a wallet on Studio Net to create a funded quest." : chainId !== CHAIN_ID ? `Switch to Studio Net (${CHAIN_ID}) in the wallet first.` : network === "not-configured" ? "Add a deployed Clutch contract address to enable sponsor actions." : networkMessage || "The configured contract is not available."} onCreate={createDraft} onCompile={compileDraft} onActivate={activateQuest} onSelect={selectQuest} />}
+    {view === "sponsor" && <SponsorDesk wallet={wallet} account={account} quests={quests} busy={busy} canWrite={hasLiveBoard && Boolean(wallet) && chainId === CHAIN_ID} blockMessage={!wallet ? "Connect a wallet on Studio Net to create a funded quest." : chainId !== CHAIN_ID ? `Switch to Studio Net (${CHAIN_ID}) in the wallet first.` : network === "not-configured" ? "Add a deployed Clutch contract address to enable sponsor actions." : networkMessage || "The configured contract is not available."} onCreate={createDraft} onCompile={compileDraft} onActivate={activateQuest} onSelect={selectQuest} onConnect={() => void connectWallet()} />}
     {view === "proofs" && <section className="panel proofs-panel" id="proofs"><div className="panel-heading proof-heading"><div><span className="eyebrow">PUBLIC RECEIPTS · NO WALLET NEEDED</span><h1>Proof shelf</h1><p className="heading-note">Every row comes from <code>list_claims</code> on the configured contract.</p></div><button type="button" className="view-toggle refresh-proof" disabled={proofsLoading || network !== "ready"} onClick={() => void reloadProofs()}><Icon name="refresh" size={15} /> Refresh</button></div>{network === "not-configured" ? <div className="proof-empty"><div className="proof-empty-icon">♙</div><h3>Connect the public board</h3><p>Set a deployed contract address to browse receipts. Clutch does not make sample proofs.</p></div> : network === "error" ? <div className="proof-empty"><div className="proof-empty-icon">!</div><h3>Public board unavailable</h3><p>{networkMessage}</p></div> : <ProofShelf claims={allProofs} loading={proofsLoading || network === "checking"} onSelect={setSelectedClaim} />}</section>}
 
     <footer className="app-footer"><span><Brand /> <span className="footer-copy">Agree on rules first. Verify the result afterward.</span></span><span>CLUTCH · DEMO ACCOUNTING · <a href="https://docs.genlayer.com/developers/networks" target="_blank" rel="noreferrer">STUDIO NET</a></span></footer>
 
-    {currentQuest && <QuestDetail key={currentQuest.id} quest={currentQuest} preview={previewQuest} liveReady={hasLiveBoard} wallet={wallet} chainId={chainId} link={link} challenge={challenge} enrollment={enrollment} claims={claims} busy={busy} onClose={() => setSelected(null)} onConnect={() => void connectWallet()} onSwitchNetwork={() => void switchNetwork()} onRequestLink={requestLink} onVerifyLink={verifyLink} onJoin={joinQuest} onSubmit={submitGame} onExpire={expireQuest} onSelectClaim={(claim) => setSelectedClaim(claim)} />}
+    {currentQuest && <QuestDetail key={currentQuest.id} quest={currentQuest} preview={previewQuest} liveReady={hasLiveBoard} wallet={wallet} chainId={chainId} link={link} challenge={challenge} enrollment={enrollment} claims={claims} busy={busy} detailsLoading={claimsLoading} detailsError={detailsError} onRetryDetails={() => void loadQuestDetails(currentQuest.id)} toast={toast} receipt={lastReceipt} onClose={() => { setSelected(null); detailRequest.current++; }} onConnect={() => void connectWallet()} onSwitchNetwork={() => void switchNetwork()} onRequestLink={requestLink} onVerifyLink={verifyLink} onJoin={joinQuest} onSubmit={submitGame} onExpire={expireQuest} onSelectClaim={(claim) => setSelectedClaim(claim)} />}
     {selectedClaim && <ReceiptDetail claim={selectedClaim} onClose={() => setSelectedClaim(null)} />}
   </main>;
 }

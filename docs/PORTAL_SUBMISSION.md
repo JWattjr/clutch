@@ -14,7 +14,7 @@ Lichess, standard chess, one completed game per claim, one successful claim per 
 
 ## Evidence collected
 
-- Frontend: [https://clutch-genlayer.vercel.app](https://clutch-genlayer.vercel.app). Vercel reports the production deployment READY, but default SSO currently blocks public visitors. Resolve access before treating this as a public demo URL.
+- Frontend: [clutch-genlayer.vercel.app](https://clutch-genlayer.vercel.app). Cookie-free HTTP 200 observed on September 30.
 - Studionet chain: `61999`.
 - Clutch contract: `0x4FbfC02007698A4e5322c34A544934EbF8b73552`, version `clutch/0.1.1`, pinned runner `py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6`.
 - Deployment: [finalized deployment transaction](https://explorer-studio.genlayer.com/tx/0xa1eceb722572aa18b22de72f59dba26883b5a8075edfb50134359e3a988e41a3).
@@ -26,12 +26,14 @@ Lichess, standard chess, one completed game per claim, one successful claim per 
 - Enrollment: the linked player joined the same-day `quest-3` slot after it opened; [enrollment transaction](https://explorer-studio.genlayer.com/tx/0x48564c89c20aa65c53500d3376ba06de7c37b8aec78ea53a1af1ae59ae562b7e).
 - Local engineering checks: GenVM lint, schema generation, 43 direct tests, TypeScript, ESLint, production build, browser smoke, and responsive checks passed.
 
+- Rejected proof: Game yQjRuAAG was submitted for quest-3 and finalized as NOT_QUALIFIED: White lost on time, and completion was about 70 seconds after the play deadline. No reward was credited. [Claim receipt](https://explorer-studio.genlayer.com/tx/0xe52028156f01689e85b6bb08ee8c6e4f288d07c7882f70cd940d7f950c716201). A successful live award remains outstanding.
+
 ## Evidence still required
 
-- Make the production frontend publicly accessible. Vercel SSO disablement was rejected by automatic approval review pending explicit approval; a custom domain is another option.
-- Submit a newly played qualifying game completed by 18:49:32 WAT on September 29. Attach its normalized evidence and claim settlement receipts. If that slot is missed, use the September 30 quest.
+- Confirm the final production URL and record a short reviewer walkthrough.
+- Complete a new qualifying game after enrollment in an open quest and attach the successful award receipt. The new casual-draw presets reduce demo difficulty.
 - Exercise expiry/refund accounting if it is required for the reviewer checklist.
 
 ## Honest current status
 
-The deployment, public-source validator reads, supported/unsupported compiler outcomes, quest activation, user-controlled account linking, and player enrollment have live evidence. A fresh qualifying game and claim have not been demonstrated, and the Vercel URL remains SSO protected. A pre-window enrollment attempt finalized with an execution error; enrollment later succeeded after the slot opened. Do not submit this as an end-to-end verified demonstration or claim guaranteed Portal points until those gaps are closed. No Portal entry has been submitted.
+The deployment, public-source validator reads, supported/unsupported compiler outcomes, quest activation, user-controlled account linking, and player enrollment have live evidence. Game yQjRuAAG was submitted for quest-3 and finalized as NOT_QUALIFIED: White lost on time, and completion was about 70 seconds after the play deadline. No reward was credited. [Claim receipt](https://explorer-studio.genlayer.com/tx/0xe52028156f01689e85b6bb08ee8c6e4f288d07c7882f70cd940d7f950c716201). A successful live award remains outstanding. A pre-window enrollment attempt finalized with an execution error; enrollment later succeeded after the slot opened. Do not submit this as an end-to-end verified demonstration or claim guaranteed Portal points until those gaps are closed. No Portal entry has been submitted.
