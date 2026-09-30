@@ -37,3 +37,7 @@ Lichess, standard chess, one completed game per claim, one successful claim per 
 ## Honest current status
 
 The deployment, public-source validator reads, supported/unsupported compiler outcomes, quest activation, user-controlled account linking, and player enrollment have live evidence. Game yQjRuAAG was submitted for quest-3 and finalized as NOT_QUALIFIED: White lost on time, and completion was about 70 seconds after the play deadline. No reward was credited. [Claim receipt](https://explorer-studio.genlayer.com/tx/0xe52028156f01689e85b6bb08ee8c6e4f288d07c7882f70cd940d7f950c716201). A successful live award remains outstanding. A pre-window enrollment attempt finalized with an execution error; enrollment later succeeded after the slot opened. Do not submit this as an end-to-end verified demonstration or claim guaranteed Portal points until those gaps are closed. No Portal entry has been submitted.
+
+## Automated demonstration disclosure
+
+The separate Clutch 0.2.0 BOT demo is deployed at `0x87AfF4A93fc1e5481Da1414bBb5CA45209CC510B`. Its casual draw quest is compiled, with no live BOT game or award yet. Once completed, describe the game as a scripted casual BOT API run; do not count it as evidence of competitive play or a successful human claim. Link both contracts and the actual receipt. See [setup and status](AUTOMATED_DEMO.md).

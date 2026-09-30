@@ -9,9 +9,9 @@ from datetime import datetime, timezone
 from genlayer import *
 
 
-VERSION = "clutch/0.1.1"
+VERSION = "clutch/0.2.0"
 SCHEMA_VERSION = "clutch-rules/1"
-SOURCE_POLICY_VERSION = "lichess-standard-live/1"
+SOURCE_POLICY_VERSION = "lichess-standard-live/2"
 STARTER_ALLOCATION = 100
 MAX_REWARD = 1000
 MIN_WINDOW_MS = 60 * 60 * 1000
@@ -175,6 +175,8 @@ def _valid_compilation(result: dict) -> bool:
 
 
 def _quest_hash_payload(quest: dict) -> dict:
+    bot_demo = quest.get("participant_policy", "HUMAN_ONLY") == "BOT_DEMO"
+    relative = quest.get("window_mode", "SCHEDULED") == "ACTIVATION_RELATIVE"
     return {
         "chain_id": int(gl.message.chain_id),
         "contract_address": gl.message.contract_address.as_hex.lower(),
@@ -189,13 +191,17 @@ def _quest_hash_payload(quest: dict) -> dict:
             "allowed_sources": list(ALLOWED_SOURCES),
             "win_statuses": list(ALLOWED_WIN_STATUSES),
             "draw_statuses": list(ALLOWED_DRAW_STATUSES),
-            "recognized_bot_games": "excluded",
+            "recognized_bot_games": "required_both_accounts" if bot_demo else "excluded",
+            "casual_only": bot_demo,
             "imported_position_and_relay_games": "excluded",
             "move_unit": "half-moves",
         },
         "reward_demo_units": int(quest["reward"]),
-        "play_window_start_ms": int(quest["starts_at_ms"]),
-        "play_window_end_ms": int(quest["ends_at_ms"]),
+        "participant_policy": quest.get("participant_policy", "HUMAN_ONLY"),
+        "window_mode": quest.get("window_mode", "SCHEDULED"),
+        "play_window_start_ms": "activation timestamp" if relative else int(quest["starts_at_ms"]),
+        "play_window_end_ms": "activation timestamp + duration" if relative else int(quest["ends_at_ms"]),
+        "window_duration_ms": int(quest.get("window_duration_ms", 0)),
         "claim_grace_ms": CLAIM_GRACE_MS,
         "activation_time": "transaction timestamp of confirm_and_activate",
     }
@@ -368,10 +374,21 @@ def _normalize_game_result(quest: dict, enrollment: dict, game: dict, requested_
     if not standard_start:
         reasons.append("INVALID_VARIANT_START")
 
-    no_bots = not game["white_bot"] and not game["black_bot"]
-    _record_check(checks, "No bot accounts", no_bots, "BOT_GAME_DISALLOWED", {"white": game["white_bot"], "black": game["black_bot"]})
-    if not no_bots:
-        reasons.append("BOT_GAME_DISALLOWED")
+    bot_demo = quest.get("participant_policy", "HUMAN_ONLY") == "BOT_DEMO"
+    if bot_demo:
+        both_bots = game["white_bot"] and game["black_bot"]
+        _record_check(checks, "Two BOT accounts (automated demo)", both_bots, "BOT_ACCOUNTS_REQUIRED", {"white": game["white_bot"], "black": game["black_bot"]})
+        if not both_bots:
+            reasons.append("BOT_ACCOUNTS_REQUIRED")
+        casual = game["rated"] is False
+        _record_check(checks, "Casual bot demo", casual, "BOT_DEMO_MUST_BE_CASUAL", game["rated"])
+        if not casual:
+            reasons.append("BOT_DEMO_MUST_BE_CASUAL")
+    else:
+        no_bots = not game["white_bot"] and not game["black_bot"]
+        _record_check(checks, "No bot accounts", no_bots, "BOT_GAME_DISALLOWED", {"white": game["white_bot"], "black": game["black_bot"]})
+        if not no_bots:
+            reasons.append("BOT_GAME_DISALLOWED")
 
     status = game["status"]
     is_win_terminal = status in ALLOWED_WIN_STATUSES
@@ -578,6 +595,7 @@ class Clutch(gl.Contract):
             "contract": gl.message.contract_address.as_hex,
             "claim_grace_ms": CLAIM_GRACE_MS,
             "claim_cooldown_ms": CLAIM_COOLDOWN_MS,
+            "participant_modes": ["HUMAN_ONLY", "BOT_DEMO"],
         }
 
     @gl.public.view
@@ -605,13 +623,15 @@ class Clutch(gl.Contract):
         self.total_available += STARTER_ALLOCATION
         return STARTER_ALLOCATION
 
-    @gl.public.write
-    def create_draft(self, description: str, reward: int, starts_at_ms: int, ends_at_ms: int) -> str:
+    def _create_draft(self, description: str, reward: int, starts_at_ms: int, ends_at_ms: int, participant_policy: str, duration_ms: int) -> str:
         wallet = self._wallet()
         _need(isinstance(description, str) and 8 <= len(description) <= 1000, "INVALID_DESCRIPTION")
         self._validate_reward(reward)
         now_ms = _now_ms()
-        self._validate_window(starts_at_ms, ends_at_ms, now_ms)
+        if participant_policy == "BOT_DEMO":
+            _need(_is_int(duration_ms) and MIN_WINDOW_MS <= duration_ms <= MAX_WINDOW_MS, "INVALID_PLAY_WINDOW")
+        else:
+            self._validate_window(starts_at_ms, ends_at_ms, now_ms)
         _need(int(self.balances.get(wallet, 0)) >= reward, "INSUFFICIENT_DEMO_BALANCE")
         self.quest_counter += 1
         quest_id = "quest-" + str(int(self.quest_counter))
@@ -619,6 +639,9 @@ class Clutch(gl.Contract):
             "id": quest_id,
             "sponsor": wallet,
             "description": description.strip(),
+            "participant_policy": participant_policy,
+            "window_mode": "ACTIVATION_RELATIVE" if participant_policy == "BOT_DEMO" else "SCHEDULED",
+            "window_duration_ms": duration_ms,
             "state": "DRAFT",
             "compile_status": "",
             "reason_codes": [],
@@ -639,10 +662,20 @@ class Clutch(gl.Contract):
         return quest_id
 
     @gl.public.write
+    def create_draft(self, description: str, reward: int, starts_at_ms: int, ends_at_ms: int) -> str:
+        return self._create_draft(description, reward, starts_at_ms, ends_at_ms, "HUMAN_ONLY", 0)
+
+    @gl.public.write
+    def create_bot_demo_draft(self, description: str, reward: int, window_duration_ms: int) -> str:
+        """Explicit casual BOT demo; the frozen duration opens on activation."""
+        return self._create_draft(description, reward, 0, 0, "BOT_DEMO", window_duration_ms)
+
+    @gl.public.write
     def update_draft(self, quest_id: str, description: str, reward: int, starts_at_ms: int, ends_at_ms: int) -> bool:
         quest = self._quest(quest_id)
         self._require_sponsor(quest)
         _need(quest["state"] in ("DRAFT", "COMPILED"), "QUEST_IMMUTABLE")
+        _need(quest.get("participant_policy", "HUMAN_ONLY") == "HUMAN_ONLY", "BOT_DEMO_DRAFT_IMMUTABLE")
         _need(isinstance(description, str) and 8 <= len(description) <= 1000, "INVALID_DESCRIPTION")
         self._validate_reward(reward)
         self._validate_window(starts_at_ms, ends_at_ms, _now_ms())
@@ -692,8 +725,14 @@ class Clutch(gl.Contract):
         current_hash = self._rule_hash(quest)
         _need(confirmed_hash == current_hash and current_hash == quest["rule_hash"], "CONFIRMATION_HASH_MISMATCH")
         now_ms = _now_ms()
-        _need(now_ms <= quest["starts_at_ms"], "PLAY_WINDOW_ALREADY_STARTED")
-        _need(now_ms < quest["ends_at_ms"], "PLAY_WINDOW_EXPIRED")
+        if quest.get("window_mode") == "ACTIVATION_RELATIVE":
+            duration_ms = int(quest["window_duration_ms"])
+            _need(MIN_WINDOW_MS <= duration_ms <= MAX_WINDOW_MS, "INVALID_PLAY_WINDOW")
+            quest["starts_at_ms"] = now_ms
+            quest["ends_at_ms"] = now_ms + duration_ms
+        else:
+            _need(now_ms <= quest["starts_at_ms"], "PLAY_WINDOW_ALREADY_STARTED")
+            _need(now_ms < quest["ends_at_ms"], "PLAY_WINDOW_EXPIRED")
         self._validate_reward(quest["reward"])
         sponsor = quest["sponsor"]
         available = int(self.balances.get(sponsor, 0))
@@ -911,6 +950,9 @@ class Clutch(gl.Contract):
             "claimant": wallet,
             "lichess_id": enrollment["lichess_id"],
             "submitted_at_ms": now_ms,
+            "participant_policy": quest.get("participant_policy", "HUMAN_ONLY"),
+            "source_policy_version": SOURCE_POLICY_VERSION,
+            "rule_hash": quest["activation_hash"],
             "outcome": evaluation["outcome"],
             "reason_codes": evaluation["reason_codes"],
             "checks": evaluation["checks"],

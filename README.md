@@ -8,6 +8,8 @@ The supplied artboard established the arcade mood and palette. The quest map use
 
 Clutch 0.1.1 is deployed to Studionet at `0x4FbfC02007698A4e5322c34A544934EbF8b73552` on chain `61999`. Live consensus passed for compiler paths, activation, Wattxbt’s profile link, enrollment, and a rejected game claim. Game yQjRuAAG was submitted for quest-3 and finalized as NOT_QUALIFIED: White lost on time, and completion was about 70 seconds after the play deadline. No reward was credited. [Claim receipt](https://explorer-studio.genlayer.com/tx/0xe52028156f01689e85b6bb08ee8c6e4f288d07c7882f70cd940d7f950c716201). A successful live award remains outstanding. The [public frontend](https://clutch-genlayer.vercel.app) returned HTTP 200 without cookies on September 30. No Portal entry has been submitted. See [the feasibility record](docs/FEASIBILITY.md) and [review handoff](docs/REVIEW_HANDOFF.md).
 
+Clutch 0.2.0 is now deployed separately for a clearly labelled casual BOT demo at `0x87AfF4A93fc1e5481Da1414bBb5CA45209CC510B`. Its 1 DEMO quest is compiled and awaits account setup; no automated game or award has been recorded. [Automated setup and runner](docs/AUTOMATED_DEMO.md).
+
 ## Stack
 
 - Next.js 16 App Router, React 19, strict TypeScript, and `genlayer-js` 1.1.8.
@@ -34,7 +36,8 @@ Without `NEXT_PUBLIC_CONTRACT_ADDRESS`, Clutch opens in preview mode. Example qu
 ## Easier demo flow
 
 - **Try a saved game** opens a wallet-free sandbox with Wattxbt’s real historical game. Replay never signs or awards DEMO.
-- **Set up the demo** offers 24-hour and 48-hour presets: casual standard draw, either color, any time control, no move limit, 1 DEMO. Dates use the browser’s displayed timezone. The preset starts 30 minutes ahead to allow compilation and activation; change it if needed.
+- **Automated demo** opens the separate BOT board; once the operator configures the accounts, the local runner plays and submits the game without manual chess.
+- The **Sponsor a quest** desk offers 24-hour and 48-hour presets: casual standard draw, either color, any time control, no move limit, 1 DEMO. Dates use the browser’s displayed timezone. The preset starts 30 minutes ahead to allow compilation and activation; change it if needed.
 - Create the draft, compile, inspect the frozen rules and confirm before play opens. Join once the window opens, then play a fresh game against another human.
 - **Find my recent games** retrieves up to 12 finished public games after enrollment. Select one or paste its full Lichess URL; private player-link suffixes are stripped before submission.
 - **Check before signing** compares the public record with rules and timing. **Verify game · sign claim** asks validators for the final decision. Browser checks are advisory and do not check contract game reuse or guarantee settlement.
@@ -75,7 +78,7 @@ npm run probe:live
 npm run deploy
 ```
 
-The deployed Clutch 0.1.1 address is `0x4FbfC02007698A4e5322c34A544934EbF8b73552`; the deployment receipt and source hash are recorded in `deployments/studionet.json` (ignored locally). The deployer must already have enough Studionet balance for another deployment. The script does not print, save, or fund a key. Keep `.env` private and never reuse a key from a sibling app.
+The deployed Clutch 0.1.1 address is `0x4FbfC02007698A4e5322c34A544934EbF8b73552`; the deployment receipt and source hash are recorded in `deployments/studionet.json` (ignored locally). Studionet is gasless; this deployment does not require buying or transferring funds. The current source is 0.2.0; `deploy:bot` writes a separate record, while `deploy` refuses to overwrite an existing deployment with different source. The script does not print, save, or fund a key. Keep `.env` private and never reuse a key from a sibling app.
 
 ## Prepare a demo draft
 

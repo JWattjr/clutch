@@ -7,6 +7,7 @@ export const CHAIN_ID_HEX = `0x${CHAIN_ID.toString(16)}`;
 export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL ?? "https://studio.genlayer.com/api";
 export const EXPLORER_URL = "https://explorer-studio.genlayer.com";
 export const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ?? "";
+export const BOT_DEMO_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_BOT_DEMO_CONTRACT_ADDRESS ?? "";
 export const RUNNER = "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6";
 
 export type RuleSet = {
@@ -20,6 +21,9 @@ export type RuleSet = {
 };
 
 export type Quest = {
+  participant_policy?: "HUMAN_ONLY" | "BOT_DEMO";
+  window_mode?: "SCHEDULED" | "ACTIVATION_RELATIVE";
+  window_duration_ms?: number;
   id: string;
   sponsor: string;
   description: string;
@@ -70,6 +74,9 @@ export type EvidenceCheck = {
 };
 
 export type Claim = {
+  participant_policy?: "HUMAN_ONLY" | "BOT_DEMO";
+  source_policy_version?: string;
+  rule_hash?: string;
   id: string;
   quest_id: string;
   game_id: string;
@@ -107,10 +114,14 @@ export function hasContractAddress(): boolean {
 }
 
 export async function readContract<T>(functionName: string, args: unknown[] = []): Promise<T> {
-  if (!hasContractAddress()) throw new Error("No deployed Clutch contract address is configured.");
+  return readContractAt<T>(CONTRACT_ADDRESS, functionName, args);
+}
+
+export async function readContractAt<T>(address: string, functionName: string, args: unknown[] = []): Promise<T> {
+  if (!/^0x[\da-fA-F]{40}$/.test(address)) throw new Error("No deployed Clutch contract address is configured.");
   const reader = createClient({ chain: studionet, endpoint: RPC_URL });
   const result = await reader.readContract({
-    address: CONTRACT_ADDRESS as `0x${string}`,
+    address: address as `0x${string}`,
     functionName,
     args: args as never,
     jsonSafeReturn: true,

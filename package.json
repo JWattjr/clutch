@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22.13.0" },
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1",
     "build": "next build",
@@ -25,7 +27,9 @@
     "seed:demo": "tsx scripts/seed-demo.ts",
     "verify:proof": "tsx scripts/verify-proof.ts",
     "probe:live": "tsx scripts/live-probe.ts",
-    "probe:validators": "tsx scripts/validator-probe.ts"
+    "probe:validators": "tsx scripts/validator-probe.ts",
+    "deploy:bot": "tsx scripts/deploy.ts --bot-demo",
+    "demo:bot": "tsx scripts/bot-demo.ts"
   },
   "dependencies": {
     "@fontsource-variable/ibm-plex-sans": "5.2.6",

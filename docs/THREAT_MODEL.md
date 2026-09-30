@@ -28,7 +28,7 @@
 | Player resubmits after insufficient evidence | Preserve attempt record; deterministic cooldown; permit retry after cooldown; do not permanently lock the game ID on an insufficient response |
 | Two qualifying claims race, or claim races expiry | Contract state and reserved balance settle atomically; only `ACTIVE` can award or refund; first successful qualifying claim recorded wins |
 | Sponsor attempts cancellation after activation | No cancellation transition exists |
-| Recognized bot/imported/unallowed game is used | Frozen source/category policy excludes these records; unknown evidence is not assumed eligible |
+| Recognized bot/imported/unallowed game is used | Human quests exclude BOTs; explicit BOT demo quests require both BOTs and casual play. Both modes exclude imported/unallowed sources; unknown evidence is not assumed eligible |
 | UI invents a successful reward | Live state is read from the contract; sandbox is visibly separate and cannot call settlement methods |
 | Lichess returns inconsistent evidence to validators | Compare only canonical normalized settlement fields; disagreement leaves state unchanged and is shown as an operational consensus failure |
 
@@ -40,3 +40,9 @@
 - Public, repeatable starter allocations are not a Sybil-resistant monetary system.
 - Validator agreement cannot prove the source API is truthful, complete, or continuously available.
 - Studio deployments are demonstration deployments. The contract does not provide production escrow or real-money payment.
+
+## Local BOT operator
+
+The automated runner holds two dedicated BOT tokens and throwaway wallet keys in `.env.bot-demo`, excluded from Git and Vercel uploads. No token is sent to GenLayer validators or browser clients. Requests target fixed Lichess URLs. BOT account conversion requires an explicit irreversible-upgrade flag, exact configured account IDs and zero prior games; Wattxbt is excluded. The runner never challenges an unrelated player, plays rated games or automates graphical chess moves.
+
+A local transaction journal and exclusive lock reduce duplicate writes. There remains a crash interval between receiving a side-effect response and saving its ID; operators must inspect the chain/game before retrying after an ambiguous failure. The contract enforces atomic reward settlement independently of the runner. A scripted agreed draw is disclosed as a functional demonstration and does not establish fair play or chess skill.

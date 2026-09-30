@@ -60,6 +60,8 @@ Independent interpretations compare the outcome status, every canonical rule val
 
 ## Frozen Lichess source policy: `lichess-standard-live/1`
 
+This section describes the existing 0.1.1 human deployment. The current 0.2.0 source adds policy version 2 below.
+
 - Fetch only `https://lichess.org/game/export/{gameId}` with `Accept: application/json`.
 - Require an eight-character alphanumeric game ID and require the returned ID to match.
 - Accept only the standard variant and recognized finished categories: decisive games ending by mate, resignation, or timeout; draws ending as draw or stalemate.
@@ -67,3 +69,9 @@ Independent interpretations compare the outcome status, every canonical rule val
 - Require stable player IDs, rated state, speed, start/completion times, terminal status, and move list for a live verdict.
 - Keep only the fields needed to check identity, rule predicates, play-window times, and half-move count in the consensus tuple.
 - A Lichess response can be stale, unavailable, or wrong; validator agreement is not independent proof of Lichess correctness or of fair play.
+
+## Explicit participant policy: `lichess-standard-live/2`
+
+The rule schema remains `clutch-rules/1`. Participant policy is an explicit quest field, outside the language compiler, bound into the confirmation hash and copied to claims. `HUMAN_ONLY` continues excluding BOT accounts. `BOT_DEMO` requires **both** exported player accounts to be recognized BOTs and the game to be casual, then applies the same identity, result, source, move-list and timing checks. A rated BOT game fails even if a compiled rated predicate is `ANY`.
+
+For BOT drafts, the hash binds `window_mode: ACTIVATION_RELATIVE` and the integer `window_duration_ms` (one hour to 30 days). The start is defined as activation's transaction timestamp and the end as that timestamp plus duration. These definitions remain identical when the actual timestamps are populated. Human scheduled drafts bind their actual start/end values. See [the automated demo](AUTOMATED_DEMO.md).

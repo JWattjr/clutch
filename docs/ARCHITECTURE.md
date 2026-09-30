@@ -33,3 +33,9 @@ Read-only views are callable without connecting a wallet. State-changing calls u
 ## External API operations
 
 The contract permits only fixed Lichess URL prefixes. It never accepts a user-supplied URL, token, or arbitrary HTTP header. The game ID is checked before URL construction. The profile path is derived from a normalized Lichess ID. API response fields required for settlement are explicit; missing evidence is not coerced into a negative result.
+
+## Separate automated BOT demo
+
+The human UI remains connected to the deployed 0.1.1 contract. The new 0.2.0 source is deployed separately for an explicit casual BOT demo. `create_bot_demo_draft` freezes participant policy and an activation-relative window duration. The confirmation hash binds these terms; actual timestamps are set at activation, and the same hash remains stable afterward. Scheduled human drafts still use exact start/end times and exclude BOT games.
+
+The local `scripts/bot-demo.ts` operator creates throwaway wallets, prepares a draft, validates exact compiled rules, links/enrolls the first BOT account, and plays both sides through Lichess's Bot API. Lichess credentials stay in a gitignored local file. The public **Bot demo** view reads only contract state. It has no game-start or transaction endpoint. The automated game is disclosed as scripted and casual; its receipt is distinct from human proofs. See [automated demo setup and live status](AUTOMATED_DEMO.md).

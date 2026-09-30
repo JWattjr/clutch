@@ -15,3 +15,6 @@ test-artifacts/
 deployments/*.json
 __pycache__/
 .pytest_cache/
+
+deployments/*.pending
+deployments/*.lock
